@@ -7,7 +7,7 @@
 <section class="split">
     <article class="panel form-panel">
         <h3>Create job</h3>
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             <label>Customer
                 <select name="customer_id" required>
                     {% for customer in customers %}
@@ -33,6 +33,8 @@
             <label>Actual cost
                 <span class="money-field"><span>$</span><input name="actual_cost" type="number" step="0.01" value="0.00"></span>
             </label>
+            <label>Drawing file<input name="drawing_file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.svg,.ai,.dwg,.dxf"></label>
+            <label>Model file<input name="model_file" type="file" accept=".step,.stp,.iges,.igs,.stl,.obj,.3mf,.3dm,.f3d,.fcstd,.sldprt,.sldasm,.skp"></label>
             <label>Description<textarea name="description" rows="4"></textarea></label>
             <button type="submit" {% if not customers %}disabled{% endif %}>Save job</button>
         </form>
@@ -42,11 +44,44 @@
     <article class="panel">
         <h3>Job pipeline</h3>
         <table>
-            <tr><th>Job</th><th>Customer</th><th>Status</th><th>Estimate</th></tr>
+            <tr><th>Job</th><th>Customer</th><th>Status</th><th>Estimate</th><th>Files</th></tr>
             {% for job in jobs %}
-                <tr><td>{{ job.name }}</td><td>{{ job.customer.name }}</td><td>{{ job.status }}</td><td>{{ job.estimated_amount|currency }}</td></tr>
+                <tr>
+                    <td>
+                        <div class="job-name-cell">
+                            {% if job.drawing_filename %}
+                                <a href="{{ url_for('static', filename=job.drawing_filename) }}" target="_blank">
+                                    <img class="job-drawing-thumb" src="{{ url_for('static', filename=job.drawing_filename) }}" alt="{{ job.name }} drawing">
+                                </a>
+                            {% endif %}
+                            <span>{{ job.name }}</span>
+                        </div>
+                    </td>
+                    <td>{{ job.customer.name }}</td>
+                    <td>{{ job.status }}</td>
+                    <td>{{ job.estimated_amount|currency }}</td>
+                    <td>
+                        <div class="job-files">
+                            {% if job.drawing_filename %}
+                                <a class="table-link" href="{{ url_for('static', filename=job.drawing_filename) }}" download="{{ job.drawing_original_filename or 'drawing' }}">Drawing</a>
+                            {% else %}
+                                <span class="muted">No drawing</span>
+                            {% endif %}
+                            {% if job.model_filename %}
+                                <a class="table-link" href="{{ url_for('static', filename=job.model_filename) }}" download="{{ job.model_original_filename or 'model' }}">Model</a>
+                            {% else %}
+                                <span class="muted">No model</span>
+                            {% endif %}
+                        </div>
+                        <form class="inline-upload" method="post" action="{{ url_for('update_job_files', job_id=job.id) }}" enctype="multipart/form-data">
+                            <input name="drawing_file" type="file" aria-label="Drawing file" accept=".pdf,.png,.jpg,.jpeg,.webp,.svg,.ai,.dwg,.dxf">
+                            <input name="model_file" type="file" aria-label="Model file" accept=".step,.stp,.iges,.igs,.stl,.obj,.3mf,.3dm,.f3d,.fcstd,.sldprt,.sldasm,.skp">
+                            <button class="small-button" type="submit">Upload</button>
+                        </form>
+                    </td>
+                </tr>
             {% else %}
-                <tr><td colspan="4">No jobs yet.</td></tr>
+                <tr><td colspan="5">No jobs yet.</td></tr>
             {% endfor %}
         </table>
     </article>

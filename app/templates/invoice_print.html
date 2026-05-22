@@ -1,7 +1,7 @@
 {% extends "print_base.html" %}
 {% block title %}Invoice {{ invoice.invoice_number }}{% endblock %}
 {% block content %}
-<header class="print-header">
+<header class="print-header {% if invoice.job and invoice.job.drawing_filename %}with-drawing{% endif %}">
     <div>
         {% if company.logo_filename %}
             <img class="print-logo" src="{{ url_for('static', filename=company.logo_filename) }}" alt="{{ company.company_name }} logo">
@@ -9,8 +9,14 @@
         <h1>{{ company.company_name }}</h1>
         <p>{{ company.address_line_1 or "" }}{% if company.address_line_2 %}<br>{{ company.address_line_2 }}{% endif %}</p>
         <p>{{ company.city or "" }}{% if company.state %}, {{ company.state }}{% endif %} {{ company.postal_code or "" }}</p>
-        <p>{{ company.phone or "" }}{% if company.email %} · {{ company.email }}{% endif %}</p>
+        <p>{{ company.phone or "" }}{% if company.email %} &middot; {{ company.email }}{% endif %}</p>
     </div>
+    {% if invoice.job and invoice.job.drawing_filename %}
+        <div class="print-header-drawing">
+            <p class="eyebrow">Drawing</p>
+            <img src="{{ url_for('static', filename=invoice.job.drawing_filename) }}" alt="{{ invoice.job.name }} drawing">
+        </div>
+    {% endif %}
     <div class="print-meta">
         <p class="eyebrow">Invoice</p>
         <h2>{{ invoice.invoice_number }}</h2>

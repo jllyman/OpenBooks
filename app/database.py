@@ -78,6 +78,10 @@ class Job(Base):
     due_date: Mapped[date | None] = mapped_column(Date)
     estimated_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     actual_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    drawing_filename: Mapped[str | None] = mapped_column(String(240))
+    drawing_original_filename: Mapped[str | None] = mapped_column(String(240))
+    model_filename: Mapped[str | None] = mapped_column(String(240))
+    model_original_filename: Mapped[str | None] = mapped_column(String(240))
 
     customer: Mapped[Customer] = relationship(back_populates="jobs")
     quotes: Mapped[list["Quote"]] = relationship(back_populates="job")
@@ -227,6 +231,18 @@ def ensure_schema_compatibility() -> None:
             invoice_columns = {column["name"] for column in inspector.get_columns("invoices")}
             if "department_id" not in invoice_columns:
                 connection.execute(text("ALTER TABLE invoices ADD COLUMN department_id INTEGER"))
+
+        if "jobs" in table_names:
+            job_columns = {column["name"] for column in inspector.get_columns("jobs")}
+            job_file_columns = {
+                "drawing_filename": "VARCHAR(240)",
+                "drawing_original_filename": "VARCHAR(240)",
+                "model_filename": "VARCHAR(240)",
+                "model_original_filename": "VARCHAR(240)",
+            }
+            for column_name, column_type in job_file_columns.items():
+                if column_name not in job_columns:
+                    connection.execute(text(f"ALTER TABLE jobs ADD COLUMN {column_name} {column_type}"))
 
 
 def seed_default_accounts() -> None:

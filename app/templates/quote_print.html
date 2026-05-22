@@ -9,7 +9,7 @@
         <h1>{{ company.company_name }}</h1>
         <p>{{ company.address_line_1 or "" }}{% if company.address_line_2 %}<br>{{ company.address_line_2 }}{% endif %}</p>
         <p>{{ company.city or "" }}{% if company.state %}, {{ company.state }}{% endif %} {{ company.postal_code or "" }}</p>
-        <p>{{ company.phone or "" }}{% if company.email %} · {{ company.email }}{% endif %}</p>
+        <p>{{ company.phone or "" }}{% if company.email %} &middot; {{ company.email }}{% endif %}</p>
     </div>
     <div class="print-meta">
         <p class="eyebrow">Quote</p>

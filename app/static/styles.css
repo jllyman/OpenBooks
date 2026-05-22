@@ -159,12 +159,14 @@ th, td { text-align: left; padding: 0.75rem 0; border-bottom: 1px solid var(--li
     background: #e8e8e8;
     color: #111;
     font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    line-height: 1.35;
 }
 .print-page {
     width: min(8.5in, calc(100vw - 2rem));
     min-height: 11in;
     margin: 1rem auto;
-    padding: 0.7in;
+    padding: 0.5in;
     background: white;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
@@ -175,15 +177,53 @@ th, td { text-align: left; padding: 0.75rem 0; border-bottom: 1px solid var(--li
     gap: 1.5rem;
     margin-bottom: 1.5rem;
 }
+.print-header.with-drawing {
+    grid-template-columns: 1fr 1.45in 0.8fr;
+    align-items: start;
+}
+.print-header h1 {
+    font-size: 22px;
+    margin-bottom: 0.18in;
+}
+.print-header h2 {
+    font-size: 18px;
+    margin-bottom: 0.12in;
+}
+.print-header p, .print-addresses p {
+    margin-bottom: 0.08in;
+}
+.print-addresses h3 {
+    font-size: 14px;
+    margin-bottom: 0.08in;
+}
 .print-logo {
-    max-width: 160px;
-    max-height: 90px;
+    display: block;
+    max-width: 0.85in;
+    max-height: 0.85in;
     object-fit: contain;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.12in;
 }
 .print-meta { text-align: right; }
-.print-table { margin: 1rem 0; }
-.print-table th, .print-table td { padding: 0.55rem 0; }
+.print-header-drawing {
+    text-align: center;
+}
+.print-header-drawing .eyebrow {
+    margin-bottom: 0.08in;
+}
+.print-header-drawing img {
+    display: block;
+    width: 1.45in;
+    height: 1.05in;
+    object-fit: contain;
+    border: 1px solid #ccc;
+    background: white;
+}
+.print-table { margin: 0.2in 0; table-layout: fixed; }
+.print-table th, .print-table td { padding: 0.08in 0.05in; }
+.print-table th:first-child, .print-table td:first-child { padding-left: 0; width: 54%; }
+.print-table th:nth-child(2), .print-table td:nth-child(2) { width: 12%; text-align: right; }
+.print-table th:nth-child(3), .print-table td:nth-child(3),
+.print-table th:nth-child(4), .print-table td:nth-child(4) { width: 17%; text-align: right; }
 .print-section { margin-top: 1.5rem; break-inside: avoid; }
 .print-image-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
 .print-image-grid img {
@@ -205,26 +245,87 @@ th, td { text-align: left; padding: 0.75rem 0; border-bottom: 1px solid var(--li
 .flash-stack { display: grid; gap: 0.75rem; margin-bottom: 1rem; }
 .flash { padding: 0.9rem 1rem; border-radius: 16px; background: #fff2dd; color: #6f4515; border: 1px solid #f0c997; }
 .helper { margin-top: 0.75rem; color: var(--warn); }
+.muted { color: var(--muted); }
+.job-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 180px;
+}
+.job-drawing-thumb {
+    display: block;
+    width: 64px;
+    height: 48px;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: white;
+}
+.job-files {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.75rem;
+    margin-bottom: 0.6rem;
+    min-width: 220px;
+}
+.inline-upload {
+    display: grid;
+    grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) auto;
+    align-items: end;
+    gap: 0.45rem;
+}
+.inline-upload input {
+    padding: 0.45rem;
+    border-radius: 10px;
+    font-size: 0.82rem;
+}
+.inline-upload .small-button {
+    padding: 0.55rem 0.75rem;
+}
 @media (max-width: 900px) {
     .split, .split.wide { grid-template-columns: 1fr; }
     .topbar { align-items: flex-start; flex-direction: column; }
     .nav { justify-content: flex-start; }
     .content { padding: 1rem; }
-    .line-row, .customer-edit-row, .account-edit-row, .form-grid { grid-template-columns: 1fr; }
-    .print-header, .print-addresses, .print-summary-grid { grid-template-columns: 1fr; }
+    .line-row, .customer-edit-row, .account-edit-row, .form-grid, .inline-upload { grid-template-columns: 1fr; }
+    .print-header, .print-header.with-drawing, .print-addresses, .print-summary-grid { grid-template-columns: 1fr; }
     .print-meta { text-align: left; }
     .print-page { padding: 1rem; }
 }
 @media print {
-    @page { margin: 0.45in; }
-    body.print-body { background: white; }
+    @page {
+        size: Letter portrait;
+        margin: 0;
+    }
+    html, body.print-body {
+        width: 8.5in;
+        min-height: 11in;
+        margin: 0;
+        background: white;
+    }
     .print-page {
-        width: auto;
+        width: 8.5in;
         min-height: auto;
         margin: 0;
-        padding: 0;
+        padding: 0.5in;
         box-shadow: none;
+        overflow: visible;
+    }
+    .print-header, .print-addresses {
+        grid-template-columns: 1fr 0.8fr;
+    }
+    .print-header.with-drawing {
+        grid-template-columns: 1fr 1.45in 0.8fr;
+    }
+    .print-meta {
+        text-align: right;
+    }
+    .print-summary-grid {
+        grid-template-columns: repeat(3, 1fr);
     }
     .print-toolbar { display: none; }
-    .print-section, .print-table, .print-image-grid img { break-inside: avoid; }
+    .print-header, .print-addresses, .print-section, .print-table, .print-image-grid img {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
 }

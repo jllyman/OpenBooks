@@ -36,6 +36,30 @@ from .database import (
 
 
 ALLOWED_IMAGE_EXTENSIONS = {".gif", ".jpeg", ".jpg", ".png", ".webp"}
+ALLOWED_JOB_FILE_EXTENSIONS = {
+    ".3dm",
+    ".3mf",
+    ".ai",
+    ".dwg",
+    ".dxf",
+    ".fcstd",
+    ".f3d",
+    ".iges",
+    ".igs",
+    ".jpeg",
+    ".jpg",
+    ".obj",
+    ".pdf",
+    ".png",
+    ".sldasm",
+    ".sldprt",
+    ".skp",
+    ".step",
+    ".stl",
+    ".stp",
+    ".svg",
+    ".webp",
+}
 
 
 def parse_date(value: str) -> date | None:
@@ -124,6 +148,32 @@ def save_logo(uploaded_file: FileStorage | None) -> str | None:
     filename = f"logo-{uuid4().hex}{extension}"
     uploaded_file.save(upload_dir / filename)
     return f"uploads/company/{filename}"
+
+
+def save_job_file(uploaded_file: FileStorage | None, file_type: str) -> tuple[str, str] | None:
+    if not uploaded_file or not uploaded_file.filename:
+        return None
+
+    original_filename = secure_filename(uploaded_file.filename)
+    extension = Path(original_filename).suffix.lower()
+    if extension not in ALLOWED_JOB_FILE_EXTENSIONS:
+        return None
+
+    upload_dir = Path(current_app.static_folder) / "uploads" / "job_files"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{file_type}-{uuid4().hex}{extension}"
+    uploaded_file.save(upload_dir / filename)
+    return f"uploads/job_files/{filename}", original_filename
+
+
+def delete_static_file(filename: str | None) -> None:
+    if not filename:
+        return
+
+    static_root = Path(current_app.static_folder).resolve()
+    file_path = (static_root / filename).resolve()
+    if static_root in file_path.parents and file_path.exists():
+        file_path.unlink()
 
 
 def register_routes(app):
@@ -304,18 +354,50 @@ def register_routes(app):
     @app.post("/jobs")
     def create_job():
         with get_session() as session:
-            session.add(
-                Job(
-                    customer_id=int(request.form["customer_id"]),
-                    name=request.form["name"].strip(),
-                    description=request.form.get("description", "").strip() or None,
-                    status=request.form["status"],
-                    due_date=parse_date(request.form.get("due_date", "")),
-                    estimated_amount=money(request.form.get("estimated_amount", "0")),
-                    actual_cost=money(request.form.get("actual_cost", "0")),
-                )
+            job = Job(
+                customer_id=int(request.form["customer_id"]),
+                name=request.form["name"].strip(),
+                description=request.form.get("description", "").strip() or None,
+                status=request.form["status"],
+                due_date=parse_date(request.form.get("due_date", "")),
+                estimated_amount=money(request.form.get("estimated_amount", "0")),
+                actual_cost=money(request.form.get("actual_cost", "0")),
             )
+
+            drawing_file = save_job_file(request.files.get("drawing_file"), "drawing")
+            if drawing_file:
+                job.drawing_filename, job.drawing_original_filename = drawing_file
+
+            model_file = save_job_file(request.files.get("model_file"), "model")
+            if model_file:
+                job.model_filename, job.model_original_filename = model_file
+
+            session.add(job)
         flash("Job created.")
+        return redirect(url_for("jobs"))
+
+    @app.post("/jobs/<int:job_id>/files")
+    def update_job_files(job_id: int):
+        with get_session() as session:
+            job = session.get(Job, job_id)
+            if job is None:
+                flash("Job not found.")
+                return redirect(url_for("jobs"))
+
+            drawing_file = save_job_file(request.files.get("drawing_file"), "drawing")
+            model_file = save_job_file(request.files.get("model_file"), "model")
+
+            if drawing_file:
+                delete_static_file(job.drawing_filename)
+                job.drawing_filename, job.drawing_original_filename = drawing_file
+            if model_file:
+                delete_static_file(job.model_filename)
+                job.model_filename, job.model_original_filename = model_file
+
+            if drawing_file or model_file:
+                flash("Job files updated.")
+            else:
+                flash("Choose a drawing or model file to upload.")
         return redirect(url_for("jobs"))
 
     @app.get("/quotes")
