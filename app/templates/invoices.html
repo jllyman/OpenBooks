@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+    <div><p class="eyebrow">Accounts receivable</p><h2>Invoices</h2></div>
+</section>
+
+<section class="split wide">
+    <article class="panel form-panel">
+        <h3>Create invoice</h3>
+        <form method="post">
+            <label>Invoice number<input name="invoice_number" value="{{ draft_number }}" required></label>
+            <label>Customer
+                <select name="customer_id" required>
+                    {% for customer in customers %}
+                        <option value="{{ customer.id }}">{{ customer.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Job
+                <select name="job_id">
+                    <option value="">No linked job</option>
+                    {% for job in jobs %}
+                        <option value="{{ job.id }}">{{ job.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Issue date<input name="issue_date" type="date" required></label>
+            <label>Due date<input name="due_date" type="date" required></label>
+            <label>Status
+                <select name="status">
+                    <option>Draft</option>
+                    <option>Sent</option>
+                    <option>Partially Paid</option>
+                    <option>Paid</option>
+                    <option>Overdue</option>
+                </select>
+            </label>
+            <div class="line-items">
+                <h4>Line items</h4>
+                {% for _ in range(3) %}
+                    <div class="line-row">
+                        <input name="item_description" placeholder="Description">
+                        <input name="item_quantity" type="number" step="0.01" value="1.00" placeholder="Qty">
+                        <input name="item_unit_price" type="number" step="0.01" value="0.00" placeholder="Unit price">
+                    </div>
+                {% endfor %}
+            </div>
+            <label>Notes<textarea name="notes" rows="4"></textarea></label>
+            <button type="submit" {% if not customers %}disabled{% endif %}>Save invoice</button>
+        </form>
+        {% if not customers %}<p class="helper">Add a customer first so invoices have a billing contact.</p>{% endif %}
+    </article>
+
+    <article class="panel">
+        <h3>Invoice register</h3>
+        <table>
+            <tr><th>No.</th><th>Customer</th><th>Total</th><th>Open</th><th>Status</th></tr>
+            {% for invoice in invoices %}
+                <tr><td>{{ invoice.invoice_number }}</td><td>{{ invoice.customer.name }}</td><td>{{ invoice_total(invoice)|currency }}</td><td>{{ (invoice_total(invoice) - invoice_paid(invoice))|currency }}</td><td>{{ invoice.status }}</td></tr>
+            {% else %}
+                <tr><td colspan="5">No invoices yet.</td></tr>
+            {% endfor %}
+        </table>
+    </article>
+</section>
+{% endblock %}

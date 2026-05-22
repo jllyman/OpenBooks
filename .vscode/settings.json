@@ -1,0 +1,9 @@
+{
+  "terminal.integrated.defaultProfile.windows": "OpenBooks VS Build Tools",
+  "terminal.integrated.profiles.windows": {
+    "OpenBooks VS Build Tools": {
+      "path": "${workspaceFolder}\\.vscode\\openbooks_vsdevcmd.cmd",
+      "icon": "tools"
+    }
+  }
+}

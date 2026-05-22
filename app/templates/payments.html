@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+    <div><p class="eyebrow">Cash flow</p><h2>Payments</h2></div>
+</section>
+
+<section class="split">
+    <article class="panel form-panel">
+        <h3>Add payment</h3>
+        <form method="post">
+            <label>Type
+                <select name="payment_type">
+                    <option value="AR">Customer payment received</option>
+                    <option value="AP">Vendor payment sent</option>
+                </select>
+            </label>
+            <label>Invoice
+                <select name="invoice_id">
+                    <option value="">No invoice</option>
+                    {% for invoice in invoices %}
+                        <option value="{{ invoice.id }}">{{ invoice.invoice_number }} - {{ invoice.customer.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Bill
+                <select name="bill_id">
+                    <option value="">No bill</option>
+                    {% for bill in bills %}
+                        <option value="{{ bill.id }}">{{ bill.vendor_name }} - {{ bill.amount|currency }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Payment date<input name="payment_date" type="date" required></label>
+            <label>Amount<input name="amount" type="number" step="0.01" required></label>
+            <label>Method<input name="method" placeholder="Check, ACH, cash..."></label>
+            <label>Notes<textarea name="notes" rows="4"></textarea></label>
+            <button type="submit">Save payment</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        <h3>Payment log</h3>
+        <table>
+            <tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th><th>Method</th></tr>
+            {% for payment in payments %}
+                <tr>
+                    <td>{{ payment.payment_date }}</td>
+                    <td>{{ payment.payment_type }}</td>
+                    <td>{% if payment.invoice %}{{ payment.invoice.invoice_number }}{% elif payment.bill %}{{ payment.bill.vendor_name }}{% else %}Unlinked{% endif %}</td>
+                    <td>{{ payment.amount|currency }}</td>
+                    <td>{{ payment.method or "-" }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5">No payments yet.</td></tr>
+            {% endfor %}
+        </table>
+    </article>
+</section>
+{% endblock %}

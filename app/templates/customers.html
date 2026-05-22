@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+    <div><p class="eyebrow">Directory</p><h2>Customers</h2></div>
+</section>
+
+<section class="split">
+    <article class="panel form-panel">
+        <h3>Add customer</h3>
+        <form method="post">
+            <label>Name<input name="name" required></label>
+            <label>Email<input name="email" type="email"></label>
+            <label>Phone<input name="phone"></label>
+            <label>Notes<textarea name="notes" rows="4"></textarea></label>
+            <button type="submit">Save customer</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        <h3>Customer list</h3>
+        <table>
+            <tr><th>Name</th><th>Email</th><th>Phone</th></tr>
+            {% for customer in customers %}
+                <tr><td>{{ customer.name }}</td><td>{{ customer.email or "-" }}</td><td>{{ customer.phone or "-" }}</td></tr>
+            {% else %}
+                <tr><td colspan="3">No customers yet.</td></tr>
+            {% endfor %}
+        </table>
+    </article>
+</section>
+{% endblock %}

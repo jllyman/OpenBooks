@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+    <div>
+        <p class="eyebrow">Business snapshot</p>
+        <h2>Keep jobs, receivables, and payables in view.</h2>
+    </div>
+</section>
+
+<section class="card-grid">
+    <article class="stat-card"><p>Open AR</p><strong>{{ snapshot.ar_open|currency }}</strong></article>
+    <article class="stat-card"><p>Open AP</p><strong>{{ snapshot.ap_open|currency }}</strong></article>
+    <article class="stat-card"><p>Invoice volume</p><strong>{{ snapshot.revenue|currency }}</strong></article>
+    <article class="stat-card"><p>Bill volume</p><strong>{{ snapshot.expenses|currency }}</strong></article>
+    <article class="stat-card"><p>Active jobs</p><strong>{{ snapshot.active_jobs }}</strong></article>
+</section>
+
+<section class="three-up">
+    <article class="panel">
+        <h3>Recent invoices</h3>
+        <table>
+            <tr><th>No.</th><th>Customer</th><th>Open</th></tr>
+            {% for invoice in recent_invoices %}
+                <tr><td>{{ invoice.invoice_number }}</td><td>{{ invoice.customer.name }}</td><td>{{ (invoice_total(invoice) - invoice_paid(invoice))|currency }}</td></tr>
+            {% else %}
+                <tr><td colspan="3">No invoices yet.</td></tr>
+            {% endfor %}
+        </table>
+    </article>
+    <article class="panel">
+        <h3>Upcoming bills</h3>
+        <table>
+            <tr><th>Vendor</th><th>Due</th><th>Open</th></tr>
+            {% for bill in recent_bills %}
+                <tr><td>{{ bill.vendor_name }}</td><td>{{ bill.due_date }}</td><td>{{ (bill.amount - bill_paid(bill))|currency }}</td></tr>
+            {% else %}
+                <tr><td colspan="3">No bills yet.</td></tr>
+            {% endfor %}
+        </table>
+    </article>
+    <article class="panel">
+        <h3>Job queue</h3>
+        <table>
+            <tr><th>Job</th><th>Status</th><th>Due</th></tr>
+            {% for job in jobs %}
+                <tr><td>{{ job.name }}</td><td>{{ job.status }}</td><td>{{ job.due_date or "-" }}</td></tr>
+            {% else %}
+                <tr><td colspan="3">No jobs yet.</td></tr>
+            {% endfor %}
+        </table>
+    </article>
+</section>
+{% endblock %}
