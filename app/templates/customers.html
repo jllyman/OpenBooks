@@ -18,14 +18,19 @@
 
     <article class="panel">
         <h3>Customer list</h3>
-        <table>
-            <tr><th>Name</th><th>Email</th><th>Phone</th></tr>
-            {% for customer in customers %}
-                <tr><td>{{ customer.name }}</td><td>{{ customer.email or "-" }}</td><td>{{ customer.phone or "-" }}</td></tr>
-            {% else %}
-                <tr><td colspan="3">No customers yet.</td></tr>
-            {% endfor %}
-        </table>
+        <div class="edit-list">
+        {% for customer in customers %}
+            <form method="post" action="{{ url_for('update_customer', customer_id=customer.id) }}" class="edit-row customer-edit-row">
+                <label>Name<input name="name" value="{{ customer.name }}" required></label>
+                <label>Email<input name="email" type="email" value="{{ customer.email or '' }}"></label>
+                <label>Phone<input name="phone" value="{{ customer.phone or '' }}"></label>
+                <label>Notes<textarea name="notes" rows="2">{{ customer.notes or '' }}</textarea></label>
+                <button type="submit" class="small-button">Update</button>
+            </form>
+        {% else %}
+            <p>No customers yet.</p>
+        {% endfor %}
+        </div>
     </article>
 </section>
 {% endblock %}

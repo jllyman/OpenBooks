@@ -11,6 +11,8 @@ from .database import (
     InvoiceLineItem,
     Job,
     Payment,
+    Quote,
+    QuoteLineItem,
     bill_paid,
     dashboard_snapshot,
     get_session,
@@ -18,6 +20,8 @@ from .database import (
     invoice_total,
     money,
     next_invoice_number,
+    next_quote_number,
+    quote_total,
 )
 
 
@@ -68,6 +72,22 @@ def register_routes(app):
         flash("Customer added.")
         return redirect(url_for("customers"))
 
+    @app.post("/customers/<int:customer_id>")
+    def update_customer(customer_id: int):
+        with get_session() as session:
+            customer = session.get(Customer, customer_id)
+            if customer is None:
+                flash("Customer not found.")
+                return redirect(url_for("customers"))
+
+            customer.name = request.form["name"].strip()
+            customer.email = request.form.get("email", "").strip() or None
+            customer.phone = request.form.get("phone", "").strip() or None
+            customer.notes = request.form.get("notes", "").strip() or None
+
+        flash("Customer updated.")
+        return redirect(url_for("customers"))
+
     @app.get("/jobs")
     def jobs():
         with get_session() as session:
@@ -91,6 +111,52 @@ def register_routes(app):
             )
         flash("Job created.")
         return redirect(url_for("jobs"))
+
+    @app.get("/quotes")
+    def quotes():
+        with get_session() as session:
+            quotes = session.query(Quote).order_by(Quote.issue_date.desc()).all()
+            customers = session.query(Customer).order_by(Customer.name.asc()).all()
+            jobs = session.query(Job).order_by(Job.name.asc()).all()
+            return render_template(
+                "quotes.html",
+                quotes=quotes,
+                customers=customers,
+                jobs=jobs,
+                draft_number=next_quote_number(session),
+                quote_total=quote_total,
+            )
+
+    @app.post("/quotes")
+    def create_quote():
+        descriptions = request.form.getlist("item_description")
+        quantities = request.form.getlist("item_quantity")
+        prices = request.form.getlist("item_unit_price")
+
+        with get_session() as session:
+            quote = Quote(
+                customer_id=int(request.form["customer_id"]),
+                job_id=int(request.form["job_id"]) if request.form.get("job_id") else None,
+                quote_number=request.form["quote_number"].strip(),
+                issue_date=parse_date(request.form["issue_date"]),
+                valid_until=parse_date(request.form.get("valid_until", "")),
+                status=request.form["status"],
+                notes=request.form.get("notes", "").strip() or None,
+            )
+
+            for description, quantity, price in zip(descriptions, quantities, prices):
+                if description.strip():
+                    quote.line_items.append(
+                        QuoteLineItem(
+                            description=description.strip(),
+                            quantity=money(quantity),
+                            unit_price=money(price),
+                        )
+                    )
+
+            session.add(quote)
+        flash("Quote created.")
+        return redirect(url_for("quotes"))
 
     @app.get("/invoices")
     def invoices():

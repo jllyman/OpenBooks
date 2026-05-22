@@ -23,6 +23,7 @@ class Customer(Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     jobs: Mapped[list["Job"]] = relationship(back_populates="customer")
+    quotes: Mapped[list["Quote"]] = relationship(back_populates="customer")
     invoices: Mapped[list["Invoice"]] = relationship(back_populates="customer")
 
 
@@ -39,7 +40,39 @@ class Job(Base):
     actual_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
 
     customer: Mapped[Customer] = relationship(back_populates="jobs")
+    quotes: Mapped[list["Quote"]] = relationship(back_populates="job")
     invoices: Mapped[list["Invoice"]] = relationship(back_populates="job")
+
+
+class Quote(Base):
+    __tablename__ = "quotes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"))
+    job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id"))
+    quote_number: Mapped[str] = mapped_column(String(40), unique=True)
+    issue_date: Mapped[date] = mapped_column(Date)
+    valid_until: Mapped[date | None] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(40), default="Draft")
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    customer: Mapped[Customer] = relationship(back_populates="quotes")
+    job: Mapped[Job | None] = relationship(back_populates="quotes")
+    line_items: Mapped[list["QuoteLineItem"]] = relationship(
+        back_populates="quote", cascade="all, delete-orphan"
+    )
+
+
+class QuoteLineItem(Base):
+    __tablename__ = "quote_line_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    quote_id: Mapped[int] = mapped_column(ForeignKey("quotes.id"))
+    description: Mapped[str] = mapped_column(String(200))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=1)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+
+    quote: Mapped[Quote] = relationship(back_populates="line_items")
 
 
 class Invoice(Base):
@@ -144,6 +177,13 @@ def invoice_total(invoice: Invoice) -> Decimal:
     return total
 
 
+def quote_total(quote: Quote) -> Decimal:
+    total = Decimal("0.00")
+    for item in quote.line_items:
+        total += money(item.quantity) * money(item.unit_price)
+    return total
+
+
 def invoice_paid(invoice: Invoice) -> Decimal:
     total = Decimal("0.00")
     for payment in invoice.payments:
@@ -189,3 +229,8 @@ def dashboard_snapshot(session: Session) -> dict[str, Decimal | int]:
 def next_invoice_number(session: Session) -> str:
     count = session.scalar(select(func.count(Invoice.id))) or 0
     return f"INV-{count + 1:04d}"
+
+
+def next_quote_number(session: Session) -> str:
+    count = session.scalar(select(func.count(Quote.id))) or 0
+    return f"Q-{count + 1:04d}"

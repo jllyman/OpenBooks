@@ -66,8 +66,18 @@ button {
     cursor: pointer;
 }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
+.small-button { padding: 0.7rem 1rem; align-self: end; }
 .line-items, .line-row { display: grid; gap: 0.6rem; }
 .line-row { grid-template-columns: 1.8fr 0.7fr 0.9fr; }
+.edit-list { display: grid; gap: 0.85rem; }
+.edit-row {
+    display: grid;
+    gap: 0.7rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--line);
+}
+.edit-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.customer-edit-row { grid-template-columns: 1fr 1fr 0.8fr 1.2fr auto; align-items: end; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 0.75rem 0; border-bottom: 1px solid var(--line); vertical-align: top; }
 .flash-stack { display: grid; gap: 0.75rem; margin-bottom: 1rem; }
@@ -77,5 +87,5 @@ th, td { text-align: left; padding: 0.75rem 0; border-bottom: 1px solid var(--li
     .shell, .split, .split.wide { grid-template-columns: 1fr; }
     .sidebar { gap: 1.5rem; }
     .content { padding: 1rem; }
-    .line-row { grid-template-columns: 1fr; }
+    .line-row, .customer-edit-row { grid-template-columns: 1fr; }
 }
