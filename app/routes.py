@@ -12,16 +12,20 @@ from werkzeug.utils import secure_filename
 from .database import (
     Account,
     Bill,
+    CashTransaction,
     CompanySettings,
     Customer,
     Department,
     Invoice,
     InvoiceLineItem,
     Job,
+    JobDetailField,
+    JobDetailValue,
     Payment,
     Quote,
     QuoteLineItem,
     WorkImage,
+    add_default_job_fields,
     bill_paid,
     dashboard_snapshot,
     get_company_settings,
@@ -60,10 +64,89 @@ ALLOWED_JOB_FILE_EXTENSIONS = {
     ".svg",
     ".webp",
 }
+DEFAULT_APPEARANCE = {
+    "theme_background": "#f3efe6",
+    "theme_paper": "#fcfaf5",
+    "theme_ink": "#1f1d1a",
+    "theme_muted": "#6c6258",
+    "theme_line": "#d8cebe",
+    "theme_accent": "#9d4edd",
+    "theme_accent_2": "#365c4d",
+    "theme_warn": "#c56a2d",
+    "app_font": "serif",
+    "app_density": "comfortable",
+    "app_nav_layout": "top",
+    "app_content_width": "full",
+    "app_corner_radius": 24,
+}
+FONT_OPTIONS = {"serif", "sans", "system"}
+DENSITY_OPTIONS = {"comfortable", "compact", "spacious"}
+NAV_LAYOUT_OPTIONS = {"top", "sidebar"}
+CONTENT_WIDTH_OPTIONS = {"full", "contained", "wide"}
+TAX_CATEGORIES = [
+    ("advertising", "Advertising"),
+    ("car_truck", "Car and truck expenses"),
+    ("commissions_fees", "Commissions and fees"),
+    ("contract_labor", "Contract labor"),
+    ("depletion", "Depletion"),
+    ("depreciation_section_179", "Depreciation and section 179"),
+    ("employee_benefits", "Employee benefit programs"),
+    ("insurance", "Insurance, other than health"),
+    ("interest_mortgage", "Interest, mortgage"),
+    ("interest_other", "Interest, other"),
+    ("legal_professional", "Legal and professional services"),
+    ("office", "Office expense"),
+    ("pension_profit_sharing", "Pension and profit-sharing plans"),
+    ("rent_vehicles_equipment", "Rent or lease, vehicles/equipment"),
+    ("rent_other", "Rent or lease, other business property"),
+    ("repairs_maintenance", "Repairs and maintenance"),
+    ("supplies", "Supplies"),
+    ("taxes_licenses", "Taxes and licenses"),
+    ("travel", "Travel"),
+    ("deductible_meals", "Deductible meals"),
+    ("utilities", "Utilities"),
+    ("wages", "Wages"),
+    ("energy_buildings", "Energy efficient commercial buildings deduction"),
+    ("other_expenses", "Other expenses"),
+    ("business_use_home", "Business use of home"),
+    ("cost_of_goods_sold", "Cost of goods sold / materials"),
+    ("uncategorized", "Uncategorized"),
+]
+TAX_CATEGORY_LABELS = dict(TAX_CATEGORIES)
 
 
 def parse_date(value: str) -> date | None:
     return date.fromisoformat(value) if value else None
+
+
+def clean_color(value: str | None, fallback: str) -> str:
+    value = (value or "").strip()
+    if len(value) == 7 and value.startswith("#") and all(character in "0123456789abcdefABCDEF" for character in value[1:]):
+        return value
+    return fallback
+
+
+def clean_choice(value: str | None, allowed_values: set[str], fallback: str) -> str:
+    value = (value or "").strip()
+    return value if value in allowed_values else fallback
+
+
+def clean_radius(value: str | None) -> int:
+    try:
+        radius = int(value or DEFAULT_APPEARANCE["app_corner_radius"])
+    except ValueError:
+        radius = int(DEFAULT_APPEARANCE["app_corner_radius"])
+    return max(4, min(radius, 32))
+
+
+def appearance_settings(settings: CompanySettings | None) -> dict[str, str | int]:
+    appearance = DEFAULT_APPEARANCE.copy()
+    if settings is None:
+        return appearance
+
+    for key, fallback in DEFAULT_APPEARANCE.items():
+        appearance[key] = getattr(settings, key, None) or fallback
+    return appearance
 
 
 def open_invoice_amount(invoice: Invoice) -> Decimal:
@@ -74,14 +157,135 @@ def open_bill_amount(bill: Bill) -> Decimal:
     return max(money(bill.amount) - bill_paid(bill), Decimal("0.00"))
 
 
+def transaction_total(transactions: list[CashTransaction], transaction_type: str) -> Decimal:
+    return sum(
+        (money(transaction.amount) for transaction in transactions if transaction.transaction_type == transaction_type),
+        Decimal("0.00"),
+    )
+
+
+def clean_tax_category(value: str | None) -> str:
+    value = (value or "").strip()
+    return value if value in TAX_CATEGORY_LABELS else "uncategorized"
+
+
+def tax_year_options() -> list[int]:
+    current_year = date.today().year
+    return list(range(current_year, current_year - 7, -1))
+
+
+def build_tax_report_context(session, year: int) -> dict:
+    start = date(year, 1, 1)
+    end = date(year, 12, 31)
+    invoices = session.query(Invoice).filter(Invoice.issue_date >= start, Invoice.issue_date <= end).order_by(Invoice.issue_date.asc()).all()
+    income_transactions = session.query(CashTransaction).filter(
+        CashTransaction.transaction_type == "Income",
+        CashTransaction.transaction_date >= start,
+        CashTransaction.transaction_date <= end,
+    ).order_by(CashTransaction.transaction_date.asc()).all()
+    bills = session.query(Bill).filter(Bill.due_date >= start, Bill.due_date <= end).order_by(Bill.due_date.asc()).all()
+    transactions = session.query(CashTransaction).filter(
+        CashTransaction.transaction_type == "Expense",
+        CashTransaction.transaction_date >= start,
+        CashTransaction.transaction_date <= end,
+    ).order_by(CashTransaction.transaction_date.asc()).all()
+
+    category_totals = {key: Decimal("0.00") for key, _label in TAX_CATEGORIES}
+    income_rows = []
+    invoice_income = Decimal("0.00")
+    direct_income = Decimal("0.00")
+    for invoice in invoices:
+        amount = invoice_total(invoice)
+        invoice_income += amount
+        income_rows.append(
+            {
+                "date": invoice.issue_date,
+                "source": "Invoice",
+                "name": invoice.customer.name,
+                "reference": invoice.invoice_number,
+                "category": "Invoice revenue",
+                "amount": amount,
+            }
+        )
+
+    for transaction in income_transactions:
+        amount = money(transaction.amount)
+        direct_income += amount
+        income_rows.append(
+            {
+                "date": transaction.transaction_date,
+                "source": "Direct income",
+                "name": transaction.contact_name or "-",
+                "reference": transaction.reference,
+                "category": transaction.category or "Direct income",
+                "amount": amount,
+            }
+        )
+
+    rows = []
+    for bill in bills:
+        category = clean_tax_category(bill.tax_category or "uncategorized")
+        amount = money(bill.amount)
+        category_totals[category] += amount
+        rows.append(
+            {
+                "date": bill.due_date,
+                "source": "Bill",
+                "name": bill.vendor_name,
+                "reference": bill.reference,
+                "category": category,
+                "amount": amount,
+            }
+        )
+
+    for transaction in transactions:
+        category = clean_tax_category(transaction.tax_category or "uncategorized")
+        amount = money(transaction.amount)
+        category_totals[category] += amount
+        rows.append(
+            {
+                "date": transaction.transaction_date,
+                "source": "Direct expense",
+                "name": transaction.contact_name or "-",
+                "reference": transaction.reference,
+                "category": category,
+                "amount": amount,
+            }
+        )
+
+    income_rows.sort(key=lambda row: row["date"])
+    rows.sort(key=lambda row: row["date"])
+    total_income = invoice_income + direct_income
+    total_expenses = sum(category_totals.values(), Decimal("0.00"))
+    return {
+        "year": year,
+        "year_options": tax_year_options(),
+        "tax_categories": TAX_CATEGORIES,
+        "tax_category_labels": TAX_CATEGORY_LABELS,
+        "income_rows": income_rows,
+        "invoice_income": invoice_income,
+        "direct_income": direct_income,
+        "total_income": total_income,
+        "category_totals": category_totals,
+        "expense_rows": rows,
+        "expense_total": total_expenses,
+        "net_profit": total_income - total_expenses,
+    }
+
+
 def build_reports_context(session):
     invoices = session.query(Invoice).order_by(Invoice.issue_date.desc()).all()
     bills = session.query(Bill).order_by(Bill.due_date.asc()).all()
+    cash_transactions = session.query(CashTransaction).order_by(CashTransaction.transaction_date.desc()).all()
     jobs = session.query(Job).order_by(Job.name.asc()).all()
     accounts = session.query(Account).order_by(Account.account_type.asc(), Account.name.asc()).all()
 
-    revenue = sum((invoice_total(invoice) for invoice in invoices), Decimal("0.00"))
-    expenses = sum((money(bill.amount) for bill in bills), Decimal("0.00"))
+    invoice_revenue = sum((invoice_total(invoice) for invoice in invoices), Decimal("0.00"))
+    direct_income = transaction_total(cash_transactions, "Income")
+    bill_expenses = sum((money(bill.amount) for bill in bills), Decimal("0.00"))
+    direct_expenses = transaction_total(cash_transactions, "Expense")
+    revenue = invoice_revenue + direct_income
+    expenses = bill_expenses + direct_expenses
     gross_profit = revenue - expenses
     ar_open = sum((open_invoice_amount(invoice) for invoice in invoices), Decimal("0.00"))
     ap_open = sum((open_bill_amount(bill) for bill in bills), Decimal("0.00"))
@@ -93,7 +297,11 @@ def build_reports_context(session):
     return {
         "report": {
             "revenue": revenue,
+            "invoice_revenue": invoice_revenue,
+            "direct_income": direct_income,
             "expenses": expenses,
+            "bill_expenses": bill_expenses,
+            "direct_expenses": direct_expenses,
             "gross_profit": gross_profit,
             "ar_open": ar_open,
             "ap_open": ap_open,
@@ -101,6 +309,7 @@ def build_reports_context(session):
         },
         "invoices": invoices,
         "bills": bills,
+        "cash_transactions": cash_transactions,
         "accounts": accounts,
         "invoice_total": invoice_total,
         "open_invoice_amount": open_invoice_amount,
@@ -176,6 +385,24 @@ def delete_static_file(filename: str | None) -> None:
         file_path.unlink()
 
 
+def field_value_map(job: Job) -> dict[int, JobDetailValue]:
+    return {detail_value.field_id: detail_value for detail_value in job.detail_values}
+
+
+def save_job_detail_values(job: Job, fields: list[JobDetailField]) -> None:
+    values_by_field_id = field_value_map(job)
+    for field in fields:
+        form_key = f"field_{field.id}"
+        value = "Yes" if field.field_type == "checkbox" and request.form.get(form_key) else request.form.get(form_key, "")
+        value = value.strip() if value else None
+
+        detail_value = values_by_field_id.get(field.id)
+        if detail_value is None:
+            detail_value = JobDetailValue(field_id=field.id)
+            job.detail_values.append(detail_value)
+        detail_value.value = value
+
+
 def register_routes(app):
     @app.template_filter("currency")
     def currency_filter(value):
@@ -191,7 +418,8 @@ def register_routes(app):
                 "company_settings": {
                     "company_name": company_name,
                     "logo_filename": logo_filename,
-                }
+                },
+                "appearance": appearance_settings(settings),
             }
 
     @app.get("/")
@@ -213,17 +441,28 @@ def register_routes(app):
             )
 
     @app.get("/settings")
-    def settings():
+    @app.get("/settings/<section>")
+    def settings(section: str = "menu"):
+        valid_sections = {"menu", "company", "departments", "appearance"}
+        if section not in valid_sections:
+            return redirect(url_for("settings"))
+
         with get_session() as session:
             company = session.get(CompanySettings, 1) or CompanySettings(id=1, company_name="OpenBooks")
             departments = session.query(Department).order_by(Department.name.asc()).all()
-            return render_template("settings.html", company=company, departments=departments)
+            return render_template(
+                "settings.html",
+                company=company,
+                departments=departments,
+                active_section=section,
+            )
 
     @app.post("/settings/company")
     def update_company_settings():
         with get_session() as session:
             company = get_company_settings(session)
             company.company_name = request.form.get("company_name", "").strip() or "OpenBooks"
+            company.ein = request.form.get("ein", "").strip() or None
             company.email = request.form.get("email", "").strip() or None
             company.phone = request.form.get("phone", "").strip() or None
             company.website = request.form.get("website", "").strip() or None
@@ -239,29 +478,136 @@ def register_routes(app):
                 company.logo_filename = logo_filename
 
         flash("Company settings updated.")
-        return redirect(url_for("settings"))
+        return redirect(url_for("settings", section="company"))
+
+    @app.post("/settings/appearance")
+    def update_appearance_settings():
+        with get_session() as session:
+            company = get_company_settings(session)
+            for field in [
+                "theme_background",
+                "theme_paper",
+                "theme_ink",
+                "theme_muted",
+                "theme_line",
+                "theme_accent",
+                "theme_accent_2",
+                "theme_warn",
+            ]:
+                setattr(company, field, clean_color(request.form.get(field), str(DEFAULT_APPEARANCE[field])))
+
+            company.app_font = clean_choice(request.form.get("app_font"), FONT_OPTIONS, str(DEFAULT_APPEARANCE["app_font"]))
+            company.app_density = clean_choice(
+                request.form.get("app_density"),
+                DENSITY_OPTIONS,
+                str(DEFAULT_APPEARANCE["app_density"]),
+            )
+            company.app_nav_layout = clean_choice(
+                request.form.get("app_nav_layout"),
+                NAV_LAYOUT_OPTIONS,
+                str(DEFAULT_APPEARANCE["app_nav_layout"]),
+            )
+            company.app_content_width = clean_choice(
+                request.form.get("app_content_width"),
+                CONTENT_WIDTH_OPTIONS,
+                str(DEFAULT_APPEARANCE["app_content_width"]),
+            )
+            company.app_corner_radius = clean_radius(request.form.get("app_corner_radius"))
+
+        flash("Appearance settings updated.")
+        return redirect(url_for("settings", section="appearance"))
 
     @app.get("/departments")
     def departments():
-        return redirect(url_for("settings"))
+        return redirect(url_for("settings", section="departments"))
 
     @app.post("/departments")
     def create_department():
         with get_session() as session:
-            session.add(
-                Department(
-                    name=request.form["name"].strip(),
-                    description=request.form.get("description", "").strip() or None,
+            department = Department(
+                name=request.form["name"].strip(),
+                description=request.form.get("description", "").strip() or None,
+            )
+            add_default_job_fields(department)
+            session.add(department)
+        flash("Department created.")
+        return redirect(url_for("settings", section="departments"))
+
+    @app.post("/departments/<int:department_id>/job-fields")
+    def create_job_detail_field(department_id: int):
+        with get_session() as session:
+            department = session.get(Department, department_id)
+            if department is None:
+                flash("Department not found.")
+                return redirect(url_for("settings", section="departments"))
+
+            label = request.form["label"].strip()
+            if not label:
+                flash("Field label is required.")
+                return redirect(url_for("settings", section="departments"))
+
+            next_sort_order = max((field.sort_order for field in department.job_fields), default=0) + 1
+            department.job_fields.append(
+                JobDetailField(
+                    label=label,
+                    field_type=request.form.get("field_type", "text"),
+                    sort_order=next_sort_order,
                 )
             )
-        flash("Department created.")
-        return redirect(url_for("settings"))
+
+        flash("Job detail field added.")
+        return redirect(url_for("settings", section="departments"))
 
     @app.get("/accounting")
     def accounting():
         with get_session() as session:
             accounts = session.query(Account).order_by(Account.account_type.asc(), Account.name.asc()).all()
             return render_template("accounting.html", accounts=accounts)
+
+    @app.get("/finance")
+    def finance():
+        with get_session() as session:
+            transactions = session.query(CashTransaction).order_by(
+                CashTransaction.transaction_date.desc(),
+                CashTransaction.id.desc(),
+            ).all()
+            accounts = session.query(Account).filter(Account.is_active == True).order_by(Account.name.asc()).all()
+            income_total = transaction_total(transactions, "Income")
+            expense_total = transaction_total(transactions, "Expense")
+            return render_template(
+                "finance.html",
+                transactions=transactions,
+                accounts=accounts,
+                income_total=income_total,
+                expense_total=expense_total,
+                tax_categories=TAX_CATEGORIES,
+                tax_category_labels=TAX_CATEGORY_LABELS,
+            )
+
+    @app.post("/finance/transactions")
+    def create_cash_transaction():
+        transaction_type = request.form.get("transaction_type", "Expense")
+        if transaction_type not in {"Income", "Expense"}:
+            transaction_type = "Expense"
+
+        with get_session() as session:
+            session.add(
+                CashTransaction(
+                    transaction_type=transaction_type,
+                    transaction_date=parse_date(request.form["transaction_date"]),
+                    amount=money(request.form["amount"]),
+                    category=request.form.get("category", "").strip() or None,
+                    tax_category=clean_tax_category(request.form.get("tax_category")),
+                    contact_name=request.form.get("contact_name", "").strip() or None,
+                    reference=request.form.get("reference", "").strip() or None,
+                    method=request.form.get("method", "").strip() or None,
+                    account_id=int(request.form["account_id"]) if request.form.get("account_id") else None,
+                    notes=request.form.get("notes", "").strip() or None,
+                )
+            )
+
+        flash(f"{transaction_type} recorded.")
+        return redirect(url_for("finance"))
 
     @app.post("/accounting/accounts")
     def create_account():
@@ -300,13 +646,28 @@ def register_routes(app):
     @app.get("/reports")
     def reports():
         with get_session() as session:
-            return render_template("reports.html", **build_reports_context(session))
+            company = session.get(CompanySettings, 1) or CompanySettings(id=1, company_name="OpenBooks")
+            return render_template("reports.html", company=company, **build_reports_context(session))
+
+    @app.get("/reports/tax")
+    def tax_report():
+        year = int(request.args.get("year", date.today().year))
+        with get_session() as session:
+            company = session.get(CompanySettings, 1) or CompanySettings(id=1, company_name="OpenBooks")
+            return render_template("tax_report.html", company=company, **build_tax_report_context(session, year))
 
     @app.get("/reports/print")
     def print_reports():
         with get_session() as session:
             company = session.get(CompanySettings, 1) or CompanySettings(id=1, company_name="OpenBooks")
             return render_template("reports_print.html", company=company, **build_reports_context(session))
+
+    @app.get("/reports/tax/print")
+    def print_tax_report():
+        year = int(request.args.get("year", date.today().year))
+        with get_session() as session:
+            company = session.get(CompanySettings, 1) or CompanySettings(id=1, company_name="OpenBooks")
+            return render_template("tax_report_print.html", company=company, **build_tax_report_context(session, year))
 
     @app.get("/customers")
     def customers():
@@ -349,13 +710,15 @@ def register_routes(app):
         with get_session() as session:
             jobs = session.query(Job).order_by(Job.due_date.asc(), Job.name.asc()).all()
             customers = session.query(Customer).order_by(Customer.name.asc()).all()
-            return render_template("jobs.html", jobs=jobs, customers=customers)
+            departments = session.query(Department).order_by(Department.name.asc()).all()
+            return render_template("jobs.html", jobs=jobs, customers=customers, departments=departments)
 
     @app.post("/jobs")
     def create_job():
         with get_session() as session:
             job = Job(
                 customer_id=int(request.form["customer_id"]),
+                department_id=int(request.form["department_id"]) if request.form.get("department_id") else None,
                 name=request.form["name"].strip(),
                 description=request.form.get("description", "").strip() or None,
                 status=request.form["status"],
@@ -375,6 +738,60 @@ def register_routes(app):
             session.add(job)
         flash("Job created.")
         return redirect(url_for("jobs"))
+
+    @app.get("/jobs/<int:job_id>")
+    def edit_job(job_id: int):
+        with get_session() as session:
+            job = session.get(Job, job_id)
+            if job is None:
+                flash("Job not found.")
+                return redirect(url_for("jobs"))
+
+            customers = session.query(Customer).order_by(Customer.name.asc()).all()
+            departments = session.query(Department).order_by(Department.name.asc()).all()
+            detail_fields = job.department.job_fields if job.department else []
+            return render_template(
+                "job_edit.html",
+                job=job,
+                customers=customers,
+                departments=departments,
+                detail_fields=detail_fields,
+                detail_values=field_value_map(job),
+            )
+
+    @app.post("/jobs/<int:job_id>")
+    def update_job(job_id: int):
+        with get_session() as session:
+            job = session.get(Job, job_id)
+            if job is None:
+                flash("Job not found.")
+                return redirect(url_for("jobs"))
+
+            job.customer_id = int(request.form["customer_id"])
+            job.department_id = int(request.form["department_id"]) if request.form.get("department_id") else None
+            job.name = request.form["name"].strip()
+            job.description = request.form.get("description", "").strip() or None
+            job.status = request.form["status"]
+            job.due_date = parse_date(request.form.get("due_date", ""))
+            job.estimated_amount = money(request.form.get("estimated_amount", "0"))
+            job.actual_cost = money(request.form.get("actual_cost", "0"))
+
+            drawing_file = save_job_file(request.files.get("drawing_file"), "drawing")
+            model_file = save_job_file(request.files.get("model_file"), "model")
+
+            if drawing_file:
+                delete_static_file(job.drawing_filename)
+                job.drawing_filename, job.drawing_original_filename = drawing_file
+            if model_file:
+                delete_static_file(job.model_filename)
+                job.model_filename, job.model_original_filename = model_file
+
+            department = session.get(Department, job.department_id) if job.department_id else None
+            if department:
+                save_job_detail_values(job, list(department.job_fields))
+
+        flash("Job updated.")
+        return redirect(url_for("edit_job", job_id=job_id))
 
     @app.post("/jobs/<int:job_id>/files")
     def update_job_files(job_id: int):
@@ -646,7 +1063,13 @@ def register_routes(app):
     def bills():
         with get_session() as session:
             bills = session.query(Bill).order_by(Bill.due_date.asc()).all()
-            return render_template("bills.html", bills=bills, bill_paid=bill_paid)
+            return render_template(
+                "bills.html",
+                bills=bills,
+                bill_paid=bill_paid,
+                tax_categories=TAX_CATEGORIES,
+                tax_category_labels=TAX_CATEGORY_LABELS,
+            )
 
     @app.post("/bills")
     def create_bill():
@@ -656,6 +1079,7 @@ def register_routes(app):
                     vendor_name=request.form["vendor_name"].strip(),
                     reference=request.form.get("reference", "").strip() or None,
                     category=request.form.get("category", "").strip() or None,
+                    tax_category=clean_tax_category(request.form.get("tax_category")),
                     amount=money(request.form["amount"]),
                     due_date=parse_date(request.form["due_date"]),
                     status=request.form["status"],

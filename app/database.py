@@ -34,8 +34,14 @@ class Department(Base):
     name: Mapped[str] = mapped_column(String(120), unique=True)
     description: Mapped[str | None] = mapped_column(Text)
 
+    jobs: Mapped[list["Job"]] = relationship(back_populates="department")
     quotes: Mapped[list["Quote"]] = relationship(back_populates="department")
     invoices: Mapped[list["Invoice"]] = relationship(back_populates="department")
+    job_fields: Mapped[list["JobDetailField"]] = relationship(
+        back_populates="department",
+        cascade="all, delete-orphan",
+        order_by="JobDetailField.sort_order",
+    )
 
 
 class CompanySettings(Base):
@@ -44,6 +50,7 @@ class CompanySettings(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     company_name: Mapped[str] = mapped_column(String(160), default="OpenBooks")
     logo_filename: Mapped[str | None] = mapped_column(String(240))
+    ein: Mapped[str | None] = mapped_column(String(40))
     email: Mapped[str | None] = mapped_column(String(120))
     phone: Mapped[str | None] = mapped_column(String(40))
     website: Mapped[str | None] = mapped_column(String(160))
@@ -53,6 +60,19 @@ class CompanySettings(Base):
     state: Mapped[str | None] = mapped_column(String(40))
     postal_code: Mapped[str | None] = mapped_column(String(20))
     notes: Mapped[str | None] = mapped_column(Text)
+    theme_background: Mapped[str | None] = mapped_column(String(20), default="#f3efe6")
+    theme_paper: Mapped[str | None] = mapped_column(String(20), default="#fcfaf5")
+    theme_ink: Mapped[str | None] = mapped_column(String(20), default="#1f1d1a")
+    theme_muted: Mapped[str | None] = mapped_column(String(20), default="#6c6258")
+    theme_line: Mapped[str | None] = mapped_column(String(20), default="#d8cebe")
+    theme_accent: Mapped[str | None] = mapped_column(String(20), default="#9d4edd")
+    theme_accent_2: Mapped[str | None] = mapped_column(String(20), default="#365c4d")
+    theme_warn: Mapped[str | None] = mapped_column(String(20), default="#c56a2d")
+    app_font: Mapped[str | None] = mapped_column(String(40), default="serif")
+    app_density: Mapped[str | None] = mapped_column(String(40), default="comfortable")
+    app_nav_layout: Mapped[str | None] = mapped_column(String(40), default="top")
+    app_content_width: Mapped[str | None] = mapped_column(String(40), default="full")
+    app_corner_radius: Mapped[int | None] = mapped_column(default=24)
 
 
 class Account(Base):
@@ -65,6 +85,25 @@ class Account(Base):
     opening_balance: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     description: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(default=True)
+    cash_transactions: Mapped[list["CashTransaction"]] = relationship(back_populates="account")
+
+
+class CashTransaction(Base):
+    __tablename__ = "cash_transactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    transaction_type: Mapped[str] = mapped_column(String(20))
+    transaction_date: Mapped[date] = mapped_column(Date)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    category: Mapped[str | None] = mapped_column(String(80))
+    tax_category: Mapped[str | None] = mapped_column(String(120))
+    contact_name: Mapped[str | None] = mapped_column(String(140))
+    reference: Mapped[str | None] = mapped_column(String(80))
+    method: Mapped[str | None] = mapped_column(String(60))
+    account_id: Mapped[int | None] = mapped_column(ForeignKey("accounts.id"))
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    account: Mapped[Account | None] = relationship(back_populates="cash_transactions")
 
 
 class Job(Base):
@@ -72,6 +111,7 @@ class Job(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"))
+    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"))
     name: Mapped[str] = mapped_column(String(140))
     description: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(40), default="Planned")
@@ -84,8 +124,41 @@ class Job(Base):
     model_original_filename: Mapped[str | None] = mapped_column(String(240))
 
     customer: Mapped[Customer] = relationship(back_populates="jobs")
+    department: Mapped[Department | None] = relationship(back_populates="jobs")
+    detail_values: Mapped[list["JobDetailValue"]] = relationship(
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
     quotes: Mapped[list["Quote"]] = relationship(back_populates="job")
     invoices: Mapped[list["Invoice"]] = relationship(back_populates="job")
+
+
+class JobDetailField(Base):
+    __tablename__ = "job_detail_fields"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    department_id: Mapped[int] = mapped_column(ForeignKey("departments.id"))
+    label: Mapped[str] = mapped_column(String(120))
+    field_type: Mapped[str] = mapped_column(String(40), default="text")
+    sort_order: Mapped[int] = mapped_column(default=0)
+
+    department: Mapped[Department] = relationship(back_populates="job_fields")
+    values: Mapped[list["JobDetailValue"]] = relationship(
+        back_populates="field",
+        cascade="all, delete-orphan",
+    )
+
+
+class JobDetailValue(Base):
+    __tablename__ = "job_detail_values"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"))
+    field_id: Mapped[int] = mapped_column(ForeignKey("job_detail_fields.id"))
+    value: Mapped[str | None] = mapped_column(Text)
+
+    job: Mapped[Job] = relationship(back_populates="detail_values")
+    field: Mapped[JobDetailField] = relationship(back_populates="values")
 
 
 class Quote(Base):
@@ -178,6 +251,7 @@ class Bill(Base):
     vendor_name: Mapped[str] = mapped_column(String(140))
     reference: Mapped[str | None] = mapped_column(String(60))
     category: Mapped[str | None] = mapped_column(String(80))
+    tax_category: Mapped[str | None] = mapped_column(String(120))
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     due_date: Mapped[date] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(40), default="Open")
@@ -213,6 +287,7 @@ def init_db(database_path: Path) -> None:
     Base.metadata.create_all(engine)
     ensure_schema_compatibility()
     seed_default_accounts()
+    seed_default_job_fields()
 
 
 def ensure_schema_compatibility() -> None:
@@ -234,6 +309,9 @@ def ensure_schema_compatibility() -> None:
 
         if "jobs" in table_names:
             job_columns = {column["name"] for column in inspector.get_columns("jobs")}
+            if "department_id" not in job_columns:
+                connection.execute(text("ALTER TABLE jobs ADD COLUMN department_id INTEGER"))
+
             job_file_columns = {
                 "drawing_filename": "VARCHAR(240)",
                 "drawing_original_filename": "VARCHAR(240)",
@@ -243,6 +321,39 @@ def ensure_schema_compatibility() -> None:
             for column_name, column_type in job_file_columns.items():
                 if column_name not in job_columns:
                     connection.execute(text(f"ALTER TABLE jobs ADD COLUMN {column_name} {column_type}"))
+
+        if "company_settings" in table_names:
+            company_columns = {column["name"] for column in inspector.get_columns("company_settings")}
+            if "ein" not in company_columns:
+                connection.execute(text("ALTER TABLE company_settings ADD COLUMN ein VARCHAR(40)"))
+            appearance_columns = {
+                "theme_background": "VARCHAR(20)",
+                "theme_paper": "VARCHAR(20)",
+                "theme_ink": "VARCHAR(20)",
+                "theme_muted": "VARCHAR(20)",
+                "theme_line": "VARCHAR(20)",
+                "theme_accent": "VARCHAR(20)",
+                "theme_accent_2": "VARCHAR(20)",
+                "theme_warn": "VARCHAR(20)",
+                "app_font": "VARCHAR(40)",
+                "app_density": "VARCHAR(40)",
+                "app_nav_layout": "VARCHAR(40)",
+                "app_content_width": "VARCHAR(40)",
+                "app_corner_radius": "INTEGER",
+            }
+            for column_name, column_type in appearance_columns.items():
+                if column_name not in company_columns:
+                    connection.execute(text(f"ALTER TABLE company_settings ADD COLUMN {column_name} {column_type}"))
+
+        if "bills" in table_names:
+            bill_columns = {column["name"] for column in inspector.get_columns("bills")}
+            if "tax_category" not in bill_columns:
+                connection.execute(text("ALTER TABLE bills ADD COLUMN tax_category VARCHAR(120)"))
+
+        if "cash_transactions" in table_names:
+            transaction_columns = {column["name"] for column in inspector.get_columns("cash_transactions")}
+            if "tax_category" not in transaction_columns:
+                connection.execute(text("ALTER TABLE cash_transactions ADD COLUMN tax_category VARCHAR(120)"))
 
 
 def seed_default_accounts() -> None:
@@ -273,6 +384,54 @@ def seed_default_accounts() -> None:
                     )
                 )
         session.commit()
+
+
+def seed_default_job_fields() -> None:
+    if SessionLocal is None:
+        return
+
+    with SessionLocal() as session:
+        departments = session.query(Department).all()
+        for department in departments:
+            add_default_job_fields(department)
+        session.commit()
+
+
+def add_default_job_fields(department: Department) -> None:
+    defaults = {
+        "3d": [
+            ("Material", "text"),
+            ("Filament color", "text"),
+            ("Nozzle size", "text"),
+            ("Layer height", "text"),
+            ("Infill", "text"),
+            ("Supports", "checkbox"),
+            ("Print temperature", "text"),
+            ("Bed temperature", "text"),
+            ("Estimated print time", "text"),
+        ],
+        "fabrication": [
+            ("Material", "text"),
+            ("Material thickness", "text"),
+            ("Cut length", "text"),
+            ("Weld process", "text"),
+            ("Finish", "text"),
+            ("Hardware", "long_text"),
+            ("Inspection notes", "long_text"),
+        ],
+    }
+
+    name = department.name.lower()
+    fields = defaults.get("3d") if "3d" in name or "print" in name else None
+    if fields is None and "fabrication" in name:
+        fields = defaults["fabrication"]
+    if not fields or department.job_fields:
+        return
+
+    for sort_order, (label, field_type) in enumerate(fields, start=1):
+        department.job_fields.append(
+            JobDetailField(label=label, field_type=field_type, sort_order=sort_order)
+        )
 
 
 @contextmanager
@@ -329,6 +488,7 @@ def bill_paid(bill: Bill) -> Decimal:
 def dashboard_snapshot(session: Session) -> dict[str, Decimal | int]:
     invoices = session.scalars(select(Invoice)).all()
     bills = session.scalars(select(Bill)).all()
+    cash_transactions = session.scalars(select(CashTransaction)).all()
     jobs = session.scalars(select(Job)).all()
 
     ar_open = Decimal("0.00")
@@ -340,7 +500,15 @@ def dashboard_snapshot(session: Session) -> dict[str, Decimal | int]:
         ap_open += max(money(bill.amount) - bill_paid(bill), Decimal("0.00"))
 
     revenue = sum((invoice_total(invoice) for invoice in invoices), Decimal("0.00"))
+    revenue += sum(
+        (money(transaction.amount) for transaction in cash_transactions if transaction.transaction_type == "Income"),
+        Decimal("0.00"),
+    )
     expenses = sum((money(bill.amount) for bill in bills), Decimal("0.00"))
+    expenses += sum(
+        (money(transaction.amount) for transaction in cash_transactions if transaction.transaction_type == "Expense"),
+        Decimal("0.00"),
+    )
     active_jobs = sum(1 for job in jobs if job.status not in {"Done", "Cancelled"})
 
     return {

@@ -11,6 +11,13 @@
             <label>Vendor<input name="vendor_name" required></label>
             <label>Reference<input name="reference"></label>
             <label>Category<input name="category" placeholder="Materials, rent, tooling..."></label>
+            <label>Tax category
+                <select name="tax_category">
+                    {% for value, label in tax_categories %}
+                        <option value="{{ value }}" {% if value == "uncategorized" %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
             <label>Amount
                 <span class="money-field"><span>$</span><input name="amount" type="number" step="0.01" required></span>
             </label>
@@ -30,11 +37,11 @@
     <article class="panel">
         <h3>Bill register</h3>
         <table>
-            <tr><th>Vendor</th><th>Amount</th><th>Open</th><th>Due</th><th>Status</th></tr>
+            <tr><th>Vendor</th><th>Tax category</th><th>Amount</th><th>Open</th><th>Due</th><th>Status</th></tr>
             {% for bill in bills %}
-                <tr><td>{{ bill.vendor_name }}</td><td>{{ bill.amount|currency }}</td><td>{{ (bill.amount - bill_paid(bill))|currency }}</td><td>{{ bill.due_date }}</td><td>{{ bill.status }}</td></tr>
+                <tr><td>{{ bill.vendor_name }}</td><td>{{ tax_category_labels.get(bill.tax_category or "uncategorized", "Uncategorized") }}</td><td>{{ bill.amount|currency }}</td><td>{{ (bill.amount - bill_paid(bill))|currency }}</td><td>{{ bill.due_date }}</td><td>{{ bill.status }}</td></tr>
             {% else %}
-                <tr><td colspan="5">No bills yet.</td></tr>
+                <tr><td colspan="6">No bills yet.</td></tr>
             {% endfor %}
         </table>
     </article>

@@ -8,6 +8,7 @@
         {% endif %}
         <h1>{{ company.company_name }}</h1>
         <p>Financial reports</p>
+        {% if company.ein %}<p>EIN: {{ company.ein }}</p>{% endif %}
     </div>
     <div class="print-meta">
         <p class="eyebrow">Generated</p>
@@ -28,8 +29,12 @@
     <h3>Profit and loss</h3>
     <table class="print-table">
         <tr><th>Line</th><th>Amount</th></tr>
-        <tr><td>Invoice revenue</td><td>{{ report.revenue|currency }}</td></tr>
-        <tr><td>Bill expenses</td><td>{{ report.expenses|currency }}</td></tr>
+        <tr><td>Invoice revenue</td><td>{{ report.invoice_revenue|currency }}</td></tr>
+        <tr><td>Direct income</td><td>{{ report.direct_income|currency }}</td></tr>
+        <tr><td><strong>Total revenue</strong></td><td><strong>{{ report.revenue|currency }}</strong></td></tr>
+        <tr><td>Bill expenses</td><td>{{ report.bill_expenses|currency }}</td></tr>
+        <tr><td>Direct expenses</td><td>{{ report.direct_expenses|currency }}</td></tr>
+        <tr><td><strong>Total expenses</strong></td><td><strong>{{ report.expenses|currency }}</strong></td></tr>
         <tr><td><strong>Gross profit</strong></td><td><strong>{{ report.gross_profit|currency }}</strong></td></tr>
     </table>
 </section>
@@ -43,6 +48,16 @@
             {% if open_amount > 0 %}
                 <tr><td>{{ invoice.invoice_number }}</td><td>{{ invoice.customer.name }}</td><td>{{ open_amount|currency }}</td></tr>
             {% endif %}
+        {% endfor %}
+    </table>
+</section>
+
+<section class="print-section">
+    <h3>Direct income and expenses</h3>
+    <table class="print-table">
+        <tr><th>Date</th><th>Type</th><th>Contact</th><th>Category</th><th>Amount</th></tr>
+        {% for transaction in cash_transactions %}
+            <tr><td>{{ transaction.transaction_date }}</td><td>{{ transaction.transaction_type }}</td><td>{{ transaction.contact_name or "-" }}</td><td>{{ transaction.category or "-" }}</td><td>{{ transaction.amount|currency }}</td></tr>
         {% endfor %}
     </table>
 </section>

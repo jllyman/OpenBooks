@@ -1,0 +1,74 @@
+{% extends "print_base.html" %}
+{% block title %}{{ year }} Tax Report{% endblock %}
+{% block content %}
+<header class="print-header">
+    <div>
+        {% if company.logo_filename %}
+            <img class="print-logo" src="{{ url_for('static', filename=company.logo_filename) }}" alt="{{ company.company_name }} logo">
+        {% endif %}
+        <h1>{{ company.company_name }}</h1>
+        <p>{{ year }} year-end tax report</p>
+        {% if company.ein %}<p>EIN: {{ company.ein }}</p>{% endif %}
+    </div>
+    <div class="print-meta">
+        <p class="eyebrow">Net profit</p>
+        <h2>{{ net_profit|currency }}</h2>
+        <p>Income: {{ total_income|currency }}</p>
+        <p>Expenses: {{ expense_total|currency }}</p>
+    </div>
+</header>
+
+<section class="print-section">
+    <h3>Income summary</h3>
+    <table class="print-table">
+        <tr><th>Income source</th><th>Amount</th></tr>
+        <tr><td>Invoice income</td><td>{{ invoice_income|currency }}</td></tr>
+        <tr><td>Direct income</td><td>{{ direct_income|currency }}</td></tr>
+        <tr><td><strong>Total income</strong></td><td><strong>{{ total_income|currency }}</strong></td></tr>
+    </table>
+</section>
+
+<section class="print-section">
+    <h3>Schedule C-style expense summary</h3>
+    <table class="print-table">
+        <tr><th>Tax category</th><th>Amount</th></tr>
+        {% for value, label in tax_categories %}
+            {% if category_totals[value] %}
+                <tr><td>{{ label }}</td><td>{{ category_totals[value]|currency }}</td></tr>
+            {% endif %}
+        {% endfor %}
+    </table>
+</section>
+
+<section class="print-section">
+    <h3>Expense detail</h3>
+    <table class="print-table">
+        <tr><th>Date</th><th>Source</th><th>Name</th><th>Tax category</th><th>Amount</th></tr>
+        {% for row in expense_rows %}
+            <tr>
+                <td>{{ row.date }}</td>
+                <td>{{ row.source }}</td>
+                <td>{{ row.name }}</td>
+                <td>{{ tax_category_labels[row.category] }}</td>
+                <td>{{ row.amount|currency }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+</section>
+
+<section class="print-section">
+    <h3>Income detail</h3>
+    <table class="print-table">
+        <tr><th>Date</th><th>Source</th><th>Name</th><th>Reference</th><th>Amount</th></tr>
+        {% for row in income_rows %}
+            <tr>
+                <td>{{ row.date }}</td>
+                <td>{{ row.source }}</td>
+                <td>{{ row.name }}</td>
+                <td>{{ row.reference or "-" }}</td>
+                <td>{{ row.amount|currency }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+</section>
+{% endblock %}

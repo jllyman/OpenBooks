@@ -1,52 +1,175 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="page-head">
-    <div><p class="eyebrow">Business setup</p><h2>Company settings</h2></div>
+    <div><p class="eyebrow">Business setup</p><h2>Settings</h2></div>
 </section>
 
-<section class="split wide">
-    <article class="panel form-panel">
-        <h3>Company profile</h3>
-        <form method="post" action="{{ url_for('update_company_settings') }}" enctype="multipart/form-data">
-            {% if company.logo_filename %}
-                <img class="settings-logo" src="{{ url_for('static', filename=company.logo_filename) }}" alt="{{ company.company_name }} logo">
-            {% endif %}
-            <label>Company name<input name="company_name" value="{{ company.company_name }}" required></label>
-            <label>Logo<input name="logo" type="file" accept="image/*"></label>
-            <label>Email<input name="email" type="email" value="{{ company.email or '' }}"></label>
-            <label>Phone<input name="phone" value="{{ company.phone or '' }}"></label>
-            <label>Website<input name="website" value="{{ company.website or '' }}"></label>
-            <label>Address line 1<input name="address_line_1" value="{{ company.address_line_1 or '' }}"></label>
-            <label>Address line 2<input name="address_line_2" value="{{ company.address_line_2 or '' }}"></label>
-            <div class="form-grid">
-                <label>City<input name="city" value="{{ company.city or '' }}"></label>
-                <label>State<input name="state" value="{{ company.state or '' }}"></label>
-                <label>ZIP<input name="postal_code" value="{{ company.postal_code or '' }}"></label>
+<section class="settings-layout">
+    <aside class="settings-menu">
+        <a class="{% if active_section == 'menu' %}active{% endif %}" href="{{ url_for('settings') }}">
+            <strong>Settings menu</strong>
+            <span>Choose an area to configure.</span>
+        </a>
+        <a class="{% if active_section == 'company' %}active{% endif %}" href="{{ url_for('settings', section='company') }}">
+            <strong>Company profile</strong>
+            <span>Logo, address, phone, and email.</span>
+        </a>
+        <a class="{% if active_section == 'departments' %}active{% endif %}" href="{{ url_for('settings', section='departments') }}">
+            <strong>Departments</strong>
+            <span>Production groups and job detail fields.</span>
+        </a>
+        <a class="{% if active_section == 'appearance' %}active{% endif %}" href="{{ url_for('settings', section='appearance') }}">
+            <strong>Appearance</strong>
+            <span>Colors, spacing, typography, and layout.</span>
+        </a>
+    </aside>
+
+    <div class="settings-content">
+        {% if active_section == "company" %}
+            <article class="panel form-panel">
+                <h3>Company profile</h3>
+                <form method="post" action="{{ url_for('update_company_settings') }}" enctype="multipart/form-data">
+                    {% if company.logo_filename %}
+                        <img class="settings-logo" src="{{ url_for('static', filename=company.logo_filename) }}" alt="{{ company.company_name }} logo">
+                    {% endif %}
+                    <label>Company name<input name="company_name" value="{{ company.company_name }}" required></label>
+                    <label>EIN<input name="ein" value="{{ company.ein or '' }}"></label>
+                    <label>Logo<input name="logo" type="file" accept="image/*"></label>
+                    <label>Email<input name="email" type="email" value="{{ company.email or '' }}"></label>
+                    <label>Phone<input name="phone" value="{{ company.phone or '' }}"></label>
+                    <label>Website<input name="website" value="{{ company.website or '' }}"></label>
+                    <label>Address line 1<input name="address_line_1" value="{{ company.address_line_1 or '' }}"></label>
+                    <label>Address line 2<input name="address_line_2" value="{{ company.address_line_2 or '' }}"></label>
+                    <div class="form-grid">
+                        <label>City<input name="city" value="{{ company.city or '' }}"></label>
+                        <label>State<input name="state" value="{{ company.state or '' }}"></label>
+                        <label>ZIP<input name="postal_code" value="{{ company.postal_code or '' }}"></label>
+                    </div>
+                    <label>Notes<textarea name="notes" rows="4">{{ company.notes or "" }}</textarea></label>
+                    <button type="submit">Save company settings</button>
+                </form>
+            </article>
+        {% elif active_section == "departments" %}
+            <article class="panel">
+                <h3>Departments</h3>
+                <form method="post" action="{{ url_for('create_department') }}" class="compact-form">
+                    <label>Name<input name="name" required></label>
+                    <label>Description<textarea name="description" rows="3"></textarea></label>
+                    <button type="submit">Save department</button>
+                </form>
+
+                <table>
+                    <tr><th>Name</th><th>Description</th><th>Job fields</th></tr>
+                    {% for department in departments %}
+                        <tr>
+                            <td>{{ department.name }}</td>
+                            <td>{{ department.description or "-" }}</td>
+                            <td>
+                                <div class="field-list">
+                                    {% for field in department.job_fields %}
+                                        <span>{{ field.label }}</span>
+                                    {% else %}
+                                        <span class="muted">No fields yet.</span>
+                                    {% endfor %}
+                                </div>
+                                <form class="inline-field-form" method="post" action="{{ url_for('create_job_detail_field', department_id=department.id) }}">
+                                    <input name="label" placeholder="New field" required>
+                                    <select name="field_type">
+                                        <option value="text">Text</option>
+                                        <option value="number">Number</option>
+                                        <option value="date">Date</option>
+                                        <option value="checkbox">Checkbox</option>
+                                        <option value="long_text">Long text</option>
+                                    </select>
+                                    <button class="small-button" type="submit">Add</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="3">No departments yet.</td></tr>
+                    {% endfor %}
+                </table>
+            </article>
+        {% elif active_section == "appearance" %}
+            <article class="panel form-panel">
+                <h3>Appearance</h3>
+                <form method="post" action="{{ url_for('update_appearance_settings') }}">
+                    <div class="swatch-grid">
+                        <label>Background<input name="theme_background" type="color" value="{{ appearance.theme_background }}"></label>
+                        <label>Cards<input name="theme_paper" type="color" value="{{ appearance.theme_paper }}"></label>
+                        <label>Text<input name="theme_ink" type="color" value="{{ appearance.theme_ink }}"></label>
+                        <label>Muted text<input name="theme_muted" type="color" value="{{ appearance.theme_muted }}"></label>
+                        <label>Lines<input name="theme_line" type="color" value="{{ appearance.theme_line }}"></label>
+                        <label>Primary accent<input name="theme_accent" type="color" value="{{ appearance.theme_accent }}"></label>
+                        <label>Secondary accent<input name="theme_accent_2" type="color" value="{{ appearance.theme_accent_2 }}"></label>
+                        <label>Warning<input name="theme_warn" type="color" value="{{ appearance.theme_warn }}"></label>
+                    </div>
+
+                    <div class="form-grid">
+                        <label>Font
+                            <select name="app_font">
+                                <option value="serif" {% if appearance.app_font == "serif" %}selected{% endif %}>Serif</option>
+                                <option value="sans" {% if appearance.app_font == "sans" %}selected{% endif %}>Sans</option>
+                                <option value="system" {% if appearance.app_font == "system" %}selected{% endif %}>System</option>
+                            </select>
+                        </label>
+                        <label>Density
+                            <select name="app_density">
+                                <option value="comfortable" {% if appearance.app_density == "comfortable" %}selected{% endif %}>Comfortable</option>
+                                <option value="compact" {% if appearance.app_density == "compact" %}selected{% endif %}>Compact</option>
+                                <option value="spacious" {% if appearance.app_density == "spacious" %}selected{% endif %}>Spacious</option>
+                            </select>
+                        </label>
+                        <label>Content width
+                            <select name="app_content_width">
+                                <option value="full" {% if appearance.app_content_width == "full" %}selected{% endif %}>Full</option>
+                                <option value="wide" {% if appearance.app_content_width == "wide" %}selected{% endif %}>Wide</option>
+                                <option value="contained" {% if appearance.app_content_width == "contained" %}selected{% endif %}>Contained</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="form-grid">
+                        <label>Navigation
+                            <select name="app_nav_layout">
+                                <option value="top" {% if appearance.app_nav_layout == "top" %}selected{% endif %}>Top bar</option>
+                                <option value="sidebar" {% if appearance.app_nav_layout == "sidebar" %}selected{% endif %}>Sidebar</option>
+                            </select>
+                        </label>
+                        <label>Corner radius<input name="app_corner_radius" type="number" min="4" max="32" value="{{ appearance.app_corner_radius }}"></label>
+                    </div>
+
+                    <div class="appearance-preview">
+                        <div>
+                            <span class="eyebrow">Preview</span>
+                            <strong>{{ company.company_name }}</strong>
+                            <p>Cards, buttons, text, spacing, and navigation follow these settings.</p>
+                            <button type="button">Sample action</button>
+                        </div>
+                    </div>
+
+                    <button type="submit">Save appearance</button>
+                </form>
+            </article>
+        {% else %}
+            <div class="settings-card-grid">
+                <a class="settings-card" href="{{ url_for('settings', section='company') }}">
+                    <span class="eyebrow">Business</span>
+                    <strong>Company profile</strong>
+                    <p>Manage the company information used across screens and printouts.</p>
+                </a>
+                <a class="settings-card" href="{{ url_for('settings', section='departments') }}">
+                    <span class="eyebrow">Production</span>
+                    <strong>Departments</strong>
+                    <p>Set up departments and the custom fields each job needs.</p>
+                </a>
+                <a class="settings-card" href="{{ url_for('settings', section='appearance') }}">
+                    <span class="eyebrow">Interface</span>
+                    <strong>Appearance</strong>
+                    <p>Customize colors, spacing, type, page width, and navigation layout.</p>
+                </a>
             </div>
-            <label>Notes<textarea name="notes" rows="4">{{ company.notes or "" }}</textarea></label>
-            <button type="submit">Save company settings</button>
-        </form>
-    </article>
-
-    <article class="panel">
-        <h3>Departments</h3>
-        <form method="post" action="{{ url_for('create_department') }}" class="compact-form">
-            <label>Name<input name="name" required></label>
-            <label>Description<textarea name="description" rows="3"></textarea></label>
-            <button type="submit">Save department</button>
-        </form>
-
-        <table>
-            <tr><th>Name</th><th>Description</th></tr>
-            {% for department in departments %}
-                <tr>
-                    <td>{{ department.name }}</td>
-                    <td>{{ department.description or "-" }}</td>
-                </tr>
-            {% else %}
-                <tr><td colspan="2">No departments yet.</td></tr>
-            {% endfor %}
-        </table>
-    </article>
+        {% endif %}
+    </div>
 </section>
 {% endblock %}

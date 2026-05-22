@@ -40,6 +40,22 @@
     </div>
 </section>
 
+{% if invoice.job and invoice.job.detail_values %}
+    <section class="print-section">
+        <h3>Job settings</h3>
+        <div class="print-detail-grid">
+            {% for detail in invoice.job.detail_values %}
+                {% if detail.value %}
+                    <div>
+                        <span>{{ detail.field.label }}</span>
+                        <strong>{{ detail.value }}</strong>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+{% endif %}
+
 <table class="print-table">
     <tr><th>Description</th><th>Qty</th><th>Unit price</th><th>Total</th></tr>
     {% for item in invoice.line_items %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+    <div><p class="eyebrow">Production</p><h2>{{ job.name }}</h2></div>
+    <a class="text-link" href="{{ url_for('jobs') }}">Back to jobs</a>
+</section>
+
+<section class="split wide">
+    <article class="panel form-panel">
+        <h3>Job details</h3>
+        <form method="post" enctype="multipart/form-data">
+            <label>Customer
+                <select name="customer_id" required>
+                    {% for customer in customers %}
+                        <option value="{{ customer.id }}" {% if job.customer_id == customer.id %}selected{% endif %}>{{ customer.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Job name<input name="name" value="{{ job.name }}" required></label>
+            <label>Department
+                <select name="department_id">
+                    <option value="">-</option>
+                    {% for department in departments %}
+                        <option value="{{ department.id }}" {% if job.department_id == department.id %}selected{% endif %}>{{ department.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Status
+                <select name="status">
+                    {% for status in ["Planned", "Quoted", "In Progress", "Waiting", "Done", "Cancelled"] %}
+                        <option {% if job.status == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Due date<input name="due_date" type="date" value="{{ job.due_date or '' }}"></label>
+            <label>Estimated amount
+                <span class="money-field"><span>$</span><input name="estimated_amount" type="number" step="0.01" value="{{ job.estimated_amount }}"></span>
+            </label>
+            <label>Actual cost
+                <span class="money-field"><span>$</span><input name="actual_cost" type="number" step="0.01" value="{{ job.actual_cost }}"></span>
+            </label>
+            <label>Drawing file<input name="drawing_file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.svg,.ai,.dwg,.dxf"></label>
+            <label>Model file<input name="model_file" type="file" accept=".step,.stp,.iges,.igs,.stl,.obj,.3mf,.3dm,.f3d,.fcstd,.sldprt,.sldasm,.skp"></label>
+            <label>Description<textarea name="description" rows="4">{{ job.description or "" }}</textarea></label>
+
+            {% if detail_fields %}
+                <div class="detail-form-section">
+                    <h4>{{ job.department.name }} settings</h4>
+                    {% for field in detail_fields %}
+                        {% set detail_value = detail_values.get(field.id) %}
+                        {% set value = detail_value.value if detail_value else "" %}
+                        {% if field.field_type == "long_text" %}
+                            <label>{{ field.label }}<textarea name="field_{{ field.id }}" rows="3">{{ value or "" }}</textarea></label>
+                        {% elif field.field_type == "checkbox" %}
+                            <label class="check-row"><input name="field_{{ field.id }}" type="checkbox" {% if value == "Yes" %}checked{% endif %}> {{ field.label }}</label>
+                        {% elif field.field_type == "date" %}
+                            <label>{{ field.label }}<input name="field_{{ field.id }}" type="date" value="{{ value or '' }}"></label>
+                        {% elif field.field_type == "number" %}
+                            <label>{{ field.label }}<input name="field_{{ field.id }}" type="number" step="0.01" value="{{ value or '' }}"></label>
+                        {% else %}
+                            <label>{{ field.label }}<input name="field_{{ field.id }}" value="{{ value or '' }}"></label>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="helper">Choose a department with job fields, or add fields under Settings.</p>
+            {% endif %}
+
+            <button type="submit">Save job</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        <h3>Files</h3>
+        {% if job.drawing_filename %}
+            <img class="job-drawing-preview" src="{{ url_for('static', filename=job.drawing_filename) }}" alt="{{ job.name }} drawing">
+            <p><a class="table-link" href="{{ url_for('static', filename=job.drawing_filename) }}" download="{{ job.drawing_original_filename or 'drawing' }}">Download drawing</a></p>
+        {% else %}
+            <p class="muted">No drawing uploaded.</p>
+        {% endif %}
+        {% if job.model_filename %}
+            <p><a class="table-link" href="{{ url_for('static', filename=job.model_filename) }}" download="{{ job.model_original_filename or 'model' }}">Download model</a></p>
+        {% else %}
+            <p class="muted">No model uploaded.</p>
+        {% endif %}
+    </article>
+</section>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+    <div>
+        <p class="eyebrow">Year-end tax prep</p>
+        <h2>{{ year }} Tax report</h2>
+        {% if company.ein %}<p class="muted">EIN: {{ company.ein }}</p>{% endif %}
+    </div>
+    <div class="page-actions">
+        <form class="year-picker" method="get" action="{{ url_for('tax_report') }}">
+            <select name="year">
+                {% for option_year in year_options %}
+                    <option value="{{ option_year }}" {% if option_year == year %}selected{% endif %}>{{ option_year }}</option>
+                {% endfor %}
+            </select>
+            <button class="small-button" type="submit">View</button>
+        </form>
+        <a class="text-link" href="{{ url_for('print_tax_report', year=year) }}" target="_blank">Print tax report</a>
+    </div>
+</section>
+
+<section class="card-grid">
+    <article class="stat-card"><p>Total income</p><strong>{{ total_income|currency }}</strong></article>
+    <article class="stat-card"><p>Total categorized expenses</p><strong>{{ expense_total|currency }}</strong></article>
+    <article class="stat-card"><p>Net profit</p><strong>{{ net_profit|currency }}</strong></article>
+    <article class="stat-card"><p>Income entries</p><strong>{{ income_rows|length }}</strong></article>
+    <article class="stat-card"><p>Expense entries</p><strong>{{ expense_rows|length }}</strong></article>
+    <article class="stat-card"><p>Uncategorized</p><strong>{{ category_totals.uncategorized|currency }}</strong></article>
+</section>
+
+<section class="panel report-section">
+    <h3>Income summary</h3>
+    <table>
+        <tr><th>Income source</th><th>Amount</th></tr>
+        <tr><td>Invoice income</td><td>{{ invoice_income|currency }}</td></tr>
+        <tr><td>Direct income</td><td>{{ direct_income|currency }}</td></tr>
+        <tr><td><strong>Total income</strong></td><td><strong>{{ total_income|currency }}</strong></td></tr>
+    </table>
+</section>
+
+<section class="split wide">
+    <article class="panel">
+        <h3>Schedule C-style expense summary</h3>
+        <table>
+            <tr><th>Tax category</th><th>Amount</th></tr>
+            {% for value, label in tax_categories %}
+                {% if category_totals[value] %}
+                    <tr><td>{{ label }}</td><td>{{ category_totals[value]|currency }}</td></tr>
+                {% endif %}
+            {% endfor %}
+        </table>
+    </article>
+
+    <article class="panel">
+        <h3>Expense detail</h3>
+        <table>
+            <tr><th>Date</th><th>Source</th><th>Name</th><th>Tax category</th><th>Amount</th></tr>
+            {% for row in expense_rows %}
+                <tr>
+                    <td>{{ row.date }}</td>
+                    <td>{{ row.source }}</td>
+                    <td>{{ row.name }}</td>
+                    <td>{{ tax_category_labels[row.category] }}</td>
+                    <td>{{ row.amount|currency }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5">No tax report expenses for this year.</td></tr>
+            {% endfor %}
+        </table>
+    </article>
+</section>
+
+<section class="panel report-section">
+    <h3>Income detail</h3>
+    <table>
+        <tr><th>Date</th><th>Source</th><th>Name</th><th>Reference</th><th>Amount</th></tr>
+        {% for row in income_rows %}
+            <tr>
+                <td>{{ row.date }}</td>
+                <td>{{ row.source }}</td>
+                <td>{{ row.name }}</td>
+                <td>{{ row.reference or "-" }}</td>
+                <td>{{ row.amount|currency }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="5">No tax report income for this year.</td></tr>
+        {% endfor %}
+    </table>
+</section>
+{% endblock %}

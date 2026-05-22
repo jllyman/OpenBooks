@@ -5,8 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>OpenBooks</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        :root {
+            --bg: {{ appearance.theme_background }};
+            --paper: {{ appearance.theme_paper }};
+            --ink: {{ appearance.theme_ink }};
+            --muted: {{ appearance.theme_muted }};
+            --line: {{ appearance.theme_line }};
+            --accent: {{ appearance.theme_accent }};
+            --accent-2: {{ appearance.theme_accent_2 }};
+            --warn: {{ appearance.theme_warn }};
+            --panel-radius: {{ appearance.app_corner_radius }}px;
+        }
+    </style>
 </head>
-<body>
+<body class="font-{{ appearance.app_font }} density-{{ appearance.app_density }} nav-{{ appearance.app_nav_layout }} width-{{ appearance.app_content_width }}">
     <div class="shell">
         <header class="topbar">
             <a class="brand" href="{{ url_for('dashboard') }}">
@@ -20,15 +33,40 @@
             </a>
             <nav class="nav">
                 <a href="{{ url_for('dashboard') }}">Dashboard</a>
-                <a href="{{ url_for('settings') }}">Settings</a>
-                <a href="{{ url_for('accounting') }}">Accounting</a>
-                <a href="{{ url_for('reports') }}">Reports</a>
                 <a href="{{ url_for('customers') }}">Customers</a>
-                <a href="{{ url_for('jobs') }}">Jobs</a>
-                <a href="{{ url_for('quotes') }}">Quotes</a>
-                <a href="{{ url_for('invoices') }}">Invoices</a>
-                <a href="{{ url_for('bills') }}">Bills</a>
-                <a href="{{ url_for('payments') }}">Payments</a>
+                <details class="nav-menu">
+                    <summary>Work</summary>
+                    <div class="nav-submenu">
+                        <a href="{{ url_for('jobs') }}">Jobs</a>
+                        <a href="{{ url_for('settings', section='departments') }}">Departments</a>
+                    </div>
+                </details>
+                <details class="nav-menu">
+                    <summary>Sales</summary>
+                    <div class="nav-submenu">
+                        <a href="{{ url_for('quotes') }}">Quotes</a>
+                        <a href="{{ url_for('invoices') }}">Invoices</a>
+                        <a href="{{ url_for('payments') }}">Payments</a>
+                    </div>
+                </details>
+                <details class="nav-menu">
+                    <summary>Finance</summary>
+                    <div class="nav-submenu">
+                        <a href="{{ url_for('finance') }}">Income & Expenses</a>
+                        <a href="{{ url_for('bills') }}">Bills</a>
+                        <a href="{{ url_for('accounting') }}">Accounting</a>
+                        <a href="{{ url_for('reports') }}">Reports</a>
+                        <a href="{{ url_for('tax_report') }}">Tax report</a>
+                    </div>
+                </details>
+                <details class="nav-menu">
+                    <summary>Settings</summary>
+                    <div class="nav-submenu">
+                        <a href="{{ url_for('settings') }}">Settings menu</a>
+                        <a href="{{ url_for('settings', section='company') }}">Company</a>
+                        <a href="{{ url_for('settings', section='appearance') }}">Appearance</a>
+                    </div>
+                </details>
             </nav>
         </header>
         <main class="content">
@@ -44,5 +82,33 @@
             {% block content %}{% endblock %}
         </main>
     </div>
+    <script>
+        document.querySelectorAll(".nav-menu").forEach((menu) => {
+            let closeTimer;
+            menu.addEventListener("pointerenter", (event) => {
+                if (event.pointerType === "mouse") {
+                    clearTimeout(closeTimer);
+                    menu.open = true;
+                }
+            });
+            menu.addEventListener("pointerleave", (event) => {
+                if (event.pointerType === "mouse") {
+                    closeTimer = setTimeout(() => {
+                        menu.open = false;
+                    }, 140);
+                }
+            });
+            menu.addEventListener("focusin", () => {
+                menu.open = true;
+            });
+            menu.addEventListener("focusout", () => {
+                requestAnimationFrame(() => {
+                    if (!menu.contains(document.activeElement)) {
+                        menu.open = false;
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

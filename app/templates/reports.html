@@ -1,8 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="page-head">
-    <div><p class="eyebrow">Financial view</p><h2>Reports</h2></div>
-    <a class="text-link" href="{{ url_for('print_reports') }}" target="_blank">Print reports</a>
+    <div>
+        <p class="eyebrow">Financial view</p>
+        <h2>Reports</h2>
+        {% if company.ein %}<p class="muted">EIN: {{ company.ein }}</p>{% endif %}
+    </div>
+    <div class="page-actions">
+        <a class="text-link" href="{{ url_for('tax_report') }}">Tax report</a>
+        <a class="text-link" href="{{ url_for('print_reports') }}" target="_blank">Print reports</a>
+    </div>
 </section>
 
 <section class="card-grid">
@@ -19,8 +26,12 @@
         <h3>Profit and loss</h3>
         <table>
             <tr><th>Line</th><th>Amount</th></tr>
-            <tr><td>Invoice revenue</td><td>{{ report.revenue|currency }}</td></tr>
-            <tr><td>Bill expenses</td><td>{{ report.expenses|currency }}</td></tr>
+            <tr><td>Invoice revenue</td><td>{{ report.invoice_revenue|currency }}</td></tr>
+            <tr><td>Direct income</td><td>{{ report.direct_income|currency }}</td></tr>
+            <tr><td><strong>Total revenue</strong></td><td><strong>{{ report.revenue|currency }}</strong></td></tr>
+            <tr><td>Bill expenses</td><td>{{ report.bill_expenses|currency }}</td></tr>
+            <tr><td>Direct expenses</td><td>{{ report.direct_expenses|currency }}</td></tr>
+            <tr><td><strong>Total expenses</strong></td><td><strong>{{ report.expenses|currency }}</strong></td></tr>
             <tr><td><strong>Gross profit</strong></td><td><strong>{{ report.gross_profit|currency }}</strong></td></tr>
         </table>
     </article>
@@ -58,6 +69,24 @@
             {% endfor %}
         </table>
     </article>
+</section>
+
+<section class="panel report-section">
+    <h3>Direct income and expenses</h3>
+    <table>
+        <tr><th>Date</th><th>Type</th><th>Contact</th><th>Category</th><th>Amount</th></tr>
+        {% for transaction in cash_transactions %}
+            <tr>
+                <td>{{ transaction.transaction_date }}</td>
+                <td>{{ transaction.transaction_type }}</td>
+                <td>{{ transaction.contact_name or "-" }}</td>
+                <td>{{ transaction.category or "-" }}</td>
+                <td>{{ transaction.amount|currency }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="5">No direct transactions yet.</td></tr>
+        {% endfor %}
+    </table>
 </section>
 
 <section class="panel report-section">
