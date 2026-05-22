@@ -7,12 +7,20 @@
 <section class="split wide">
     <article class="panel form-panel">
         <h3>Create quote</h3>
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             <label>Quote number<input name="quote_number" value="{{ draft_number }}" required></label>
             <label>Customer
                 <select name="customer_id" required>
                     {% for customer in customers %}
                         <option value="{{ customer.id }}">{{ customer.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Department
+                <select name="department_id">
+                    <option value="">No department</option>
+                    {% for department in departments %}
+                        <option value="{{ department.id }}">{{ department.name }}</option>
                     {% endfor %}
                 </select>
             </label>
@@ -46,6 +54,7 @@
                 {% endfor %}
             </div>
             <label>Notes<textarea name="notes" rows="4"></textarea></label>
+            <label>Work images<input name="work_images" type="file" accept="image/*" multiple></label>
             <button type="submit" {% if not customers %}disabled{% endif %}>Save quote</button>
         </form>
         {% if not customers %}<p class="helper">Add a customer first so quotes have a billing contact.</p>{% endif %}
@@ -54,17 +63,18 @@
     <article class="panel">
         <h3>Quote register</h3>
         <table>
-            <tr><th>No.</th><th>Customer</th><th>Total</th><th>Status</th><th>Valid until</th></tr>
+            <tr><th>No.</th><th>Customer</th><th>Department</th><th>Total</th><th>Status</th><th>Images</th></tr>
             {% for quote in quotes %}
                 <tr>
-                    <td>{{ quote.quote_number }}</td>
+                    <td><a class="table-link" href="{{ url_for('edit_quote', quote_id=quote.id) }}">{{ quote.quote_number }}</a></td>
                     <td>{{ quote.customer.name }}</td>
+                    <td>{{ quote.department.name if quote.department else "-" }}</td>
                     <td>{{ quote_total(quote)|currency }}</td>
                     <td>{{ quote.status }}</td>
-                    <td>{{ quote.valid_until or "-" }}</td>
+                    <td>{{ quote.images|length }}</td>
                 </tr>
             {% else %}
-                <tr><td colspan="5">No quotes yet.</td></tr>
+                <tr><td colspan="6">No quotes yet.</td></tr>
             {% endfor %}
         </table>
     </article>

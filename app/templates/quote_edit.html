@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+    <div>
+        <p class="eyebrow">Sales pipeline</p>
+        <h2>Edit quote {{ quote.quote_number }}</h2>
+    </div>
+    <a class="text-link" href="{{ url_for('quotes') }}">Back to quotes</a>
+</section>
+
+<section class="split wide">
+    <article class="panel form-panel">
+        <h3>Quote details</h3>
+        <form method="post" enctype="multipart/form-data">
+            <label>Quote number<input name="quote_number" value="{{ quote.quote_number }}" required></label>
+            <label>Customer
+                <select name="customer_id" required>
+                    {% for customer in customers %}
+                        <option value="{{ customer.id }}" {% if customer.id == quote.customer_id %}selected{% endif %}>{{ customer.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Department
+                <select name="department_id">
+                    <option value="">No department</option>
+                    {% for department in departments %}
+                        <option value="{{ department.id }}" {% if quote.department_id == department.id %}selected{% endif %}>{{ department.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Job
+                <select name="job_id">
+                    <option value="">No linked job</option>
+                    {% for job in jobs %}
+                        <option value="{{ job.id }}" {% if quote.job_id == job.id %}selected{% endif %}>{{ job.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Issue date<input name="issue_date" type="date" value="{{ quote.issue_date }}" required></label>
+            <label>Valid until<input name="valid_until" type="date" value="{{ quote.valid_until or '' }}"></label>
+            <label>Status
+                <select name="status">
+                    {% for status in ["Draft", "Sent", "Accepted", "Declined", "Expired"] %}
+                        <option {% if quote.status == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <div class="line-items">
+                <h4>Line items</h4>
+                {% for item in quote.line_items %}
+                    <div class="line-row">
+                        <input name="item_description" value="{{ item.description }}" placeholder="Description">
+                        <input name="item_quantity" type="number" step="0.01" value="{{ item.quantity }}" placeholder="Qty">
+                        <input name="item_unit_price" type="number" step="0.01" value="{{ item.unit_price }}" placeholder="Unit price">
+                    </div>
+                {% endfor %}
+                {% for _ in range(3) %}
+                    <div class="line-row">
+                        <input name="item_description" placeholder="Description">
+                        <input name="item_quantity" type="number" step="0.01" value="1.00" placeholder="Qty">
+                        <input name="item_unit_price" type="number" step="0.01" value="0.00" placeholder="Unit price">
+                    </div>
+                {% endfor %}
+            </div>
+            <label>Notes<textarea name="notes" rows="4">{{ quote.notes or "" }}</textarea></label>
+            <label>Add work images<input name="work_images" type="file" accept="image/*" multiple></label>
+            <button type="submit">Save quote changes</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        <h3>Quote summary</h3>
+        <table>
+            <tr><th>Total</th><td>{{ quote_total(quote)|currency }}</td></tr>
+            <tr><th>Status</th><td>{{ quote.status }}</td></tr>
+            <tr><th>Customer</th><td>{{ quote.customer.name }}</td></tr>
+            <tr><th>Department</th><td>{{ quote.department.name if quote.department else "-" }}</td></tr>
+            <tr><th>Job</th><td>{{ quote.job.name if quote.job else "-" }}</td></tr>
+        </table>
+
+        <h3>Work images</h3>
+        <div class="image-grid">
+            {% for image in quote.images %}
+                <a href="{{ url_for('static', filename=image.filename) }}" target="_blank">
+                    <img src="{{ url_for('static', filename=image.filename) }}" alt="{{ image.original_filename or 'Work image' }}">
+                </a>
+            {% else %}
+                <p>No images attached.</p>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+    <div>
+        <p class="eyebrow">Accounts receivable</p>
+        <h2>Edit invoice {{ invoice.invoice_number }}</h2>
+    </div>
+    <a class="text-link" href="{{ url_for('invoices') }}">Back to invoices</a>
+</section>
+
+<section class="split wide">
+    <article class="panel form-panel">
+        <h3>Invoice details</h3>
+        <form method="post" enctype="multipart/form-data">
+            <label>Invoice number<input name="invoice_number" value="{{ invoice.invoice_number }}" required></label>
+            <label>Customer
+                <select name="customer_id" required>
+                    {% for customer in customers %}
+                        <option value="{{ customer.id }}" {% if customer.id == invoice.customer_id %}selected{% endif %}>{{ customer.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Department
+                <select name="department_id">
+                    <option value="">No department</option>
+                    {% for department in departments %}
+                        <option value="{{ department.id }}" {% if invoice.department_id == department.id %}selected{% endif %}>{{ department.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Job
+                <select name="job_id">
+                    <option value="">No linked job</option>
+                    {% for job in jobs %}
+                        <option value="{{ job.id }}" {% if invoice.job_id == job.id %}selected{% endif %}>{{ job.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Issue date<input name="issue_date" type="date" value="{{ invoice.issue_date }}" required></label>
+            <label>Due date<input name="due_date" type="date" value="{{ invoice.due_date }}" required></label>
+            <label>Status
+                <select name="status">
+                    {% for status in ["Draft", "Sent", "Partially Paid", "Paid", "Overdue"] %}
+                        <option {% if invoice.status == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <div class="line-items">
+                <h4>Line items</h4>
+                {% for item in invoice.line_items %}
+                    <div class="line-row">
+                        <input name="item_description" value="{{ item.description }}" placeholder="Description">
+                        <input name="item_quantity" type="number" step="0.01" value="{{ item.quantity }}" placeholder="Qty">
+                        <input name="item_unit_price" type="number" step="0.01" value="{{ item.unit_price }}" placeholder="Unit price">
+                    </div>
+                {% endfor %}
+                {% for _ in range(3) %}
+                    <div class="line-row">
+                        <input name="item_description" placeholder="Description">
+                        <input name="item_quantity" type="number" step="0.01" value="1.00" placeholder="Qty">
+                        <input name="item_unit_price" type="number" step="0.01" value="0.00" placeholder="Unit price">
+                    </div>
+                {% endfor %}
+            </div>
+            <label>Notes<textarea name="notes" rows="4">{{ invoice.notes or "" }}</textarea></label>
+            <label>Add work images<input name="work_images" type="file" accept="image/*" multiple></label>
+            <button type="submit">Save invoice changes</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        <h3>Invoice summary</h3>
+        <table>
+            <tr><th>Total</th><td>{{ invoice_total(invoice)|currency }}</td></tr>
+            <tr><th>Paid</th><td>{{ invoice_paid(invoice)|currency }}</td></tr>
+            <tr><th>Open</th><td>{{ (invoice_total(invoice) - invoice_paid(invoice))|currency }}</td></tr>
+            <tr><th>Status</th><td>{{ invoice.status }}</td></tr>
+            <tr><th>Customer</th><td>{{ invoice.customer.name }}</td></tr>
+            <tr><th>Department</th><td>{{ invoice.department.name if invoice.department else "-" }}</td></tr>
+            <tr><th>Job</th><td>{{ invoice.job.name if invoice.job else "-" }}</td></tr>
+        </table>
+
+        <h3>Work images</h3>
+        <div class="image-grid">
+            {% for image in invoice.images %}
+                <a href="{{ url_for('static', filename=image.filename) }}" target="_blank">
+                    <img src="{{ url_for('static', filename=image.filename) }}" alt="{{ image.original_filename or 'Work image' }}">
+                </a>
+            {% else %}
+                <p>No images attached.</p>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+{% endblock %}

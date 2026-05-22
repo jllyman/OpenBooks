@@ -10,12 +10,16 @@
     <div class="shell">
         <aside class="sidebar">
             <div>
+                {% if company_settings.logo_filename %}
+                    <img class="company-logo" src="{{ url_for('static', filename=company_settings.logo_filename) }}" alt="{{ company_settings.company_name }} logo">
+                {% endif %}
                 <p class="eyebrow">Local business accounting</p>
-                <h1>OpenBooks</h1>
+                <h1>{{ company_settings.company_name }}</h1>
                 <p class="intro">Fabrication, woodworking, invoicing, and payables in one local app.</p>
             </div>
             <nav class="nav">
                 <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('settings') }}">Settings</a>
                 <a href="{{ url_for('customers') }}">Customers</a>
                 <a href="{{ url_for('jobs') }}">Jobs</a>
                 <a href="{{ url_for('quotes') }}">Quotes</a>

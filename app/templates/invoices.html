@@ -7,12 +7,20 @@
 <section class="split wide">
     <article class="panel form-panel">
         <h3>Create invoice</h3>
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             <label>Invoice number<input name="invoice_number" value="{{ draft_number }}" required></label>
             <label>Customer
                 <select name="customer_id" required>
                     {% for customer in customers %}
                         <option value="{{ customer.id }}">{{ customer.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Department
+                <select name="department_id">
+                    <option value="">No department</option>
+                    {% for department in departments %}
+                        <option value="{{ department.id }}">{{ department.name }}</option>
                     {% endfor %}
                 </select>
             </label>
@@ -46,6 +54,7 @@
                 {% endfor %}
             </div>
             <label>Notes<textarea name="notes" rows="4"></textarea></label>
+            <label>Work images<input name="work_images" type="file" accept="image/*" multiple></label>
             <button type="submit" {% if not customers %}disabled{% endif %}>Save invoice</button>
         </form>
         {% if not customers %}<p class="helper">Add a customer first so invoices have a billing contact.</p>{% endif %}
@@ -54,11 +63,19 @@
     <article class="panel">
         <h3>Invoice register</h3>
         <table>
-            <tr><th>No.</th><th>Customer</th><th>Total</th><th>Open</th><th>Status</th></tr>
+            <tr><th>No.</th><th>Customer</th><th>Department</th><th>Total</th><th>Open</th><th>Status</th><th>Images</th></tr>
             {% for invoice in invoices %}
-                <tr><td>{{ invoice.invoice_number }}</td><td>{{ invoice.customer.name }}</td><td>{{ invoice_total(invoice)|currency }}</td><td>{{ (invoice_total(invoice) - invoice_paid(invoice))|currency }}</td><td>{{ invoice.status }}</td></tr>
+                <tr>
+                    <td><a class="table-link" href="{{ url_for('edit_invoice', invoice_id=invoice.id) }}">{{ invoice.invoice_number }}</a></td>
+                    <td>{{ invoice.customer.name }}</td>
+                    <td>{{ invoice.department.name if invoice.department else "-" }}</td>
+                    <td>{{ invoice_total(invoice)|currency }}</td>
+                    <td>{{ (invoice_total(invoice) - invoice_paid(invoice))|currency }}</td>
+                    <td>{{ invoice.status }}</td>
+                    <td>{{ invoice.images|length }}</td>
+                </tr>
             {% else %}
-                <tr><td colspan="5">No invoices yet.</td></tr>
+                <tr><td colspan="7">No invoices yet.</td></tr>
             {% endfor %}
         </table>
     </article>

@@ -5,7 +5,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from sqlalchemy import Date, ForeignKey, Numeric, String, Text, create_engine, func, select
+from sqlalchemy import Date, ForeignKey, Numeric, String, Text, create_engine, func, inspect, select, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 
 
@@ -25,6 +25,34 @@ class Customer(Base):
     jobs: Mapped[list["Job"]] = relationship(back_populates="customer")
     quotes: Mapped[list["Quote"]] = relationship(back_populates="customer")
     invoices: Mapped[list["Invoice"]] = relationship(back_populates="customer")
+
+
+class Department(Base):
+    __tablename__ = "departments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True)
+    description: Mapped[str | None] = mapped_column(Text)
+
+    quotes: Mapped[list["Quote"]] = relationship(back_populates="department")
+    invoices: Mapped[list["Invoice"]] = relationship(back_populates="department")
+
+
+class CompanySettings(Base):
+    __tablename__ = "company_settings"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    company_name: Mapped[str] = mapped_column(String(160), default="OpenBooks")
+    logo_filename: Mapped[str | None] = mapped_column(String(240))
+    email: Mapped[str | None] = mapped_column(String(120))
+    phone: Mapped[str | None] = mapped_column(String(40))
+    website: Mapped[str | None] = mapped_column(String(160))
+    address_line_1: Mapped[str | None] = mapped_column(String(160))
+    address_line_2: Mapped[str | None] = mapped_column(String(160))
+    city: Mapped[str | None] = mapped_column(String(80))
+    state: Mapped[str | None] = mapped_column(String(40))
+    postal_code: Mapped[str | None] = mapped_column(String(20))
+    notes: Mapped[str | None] = mapped_column(Text)
 
 
 class Job(Base):
@@ -49,6 +77,7 @@ class Quote(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"))
+    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"))
     job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id"))
     quote_number: Mapped[str] = mapped_column(String(40), unique=True)
     issue_date: Mapped[date] = mapped_column(Date)
@@ -57,10 +86,12 @@ class Quote(Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     customer: Mapped[Customer] = relationship(back_populates="quotes")
+    department: Mapped[Department | None] = relationship(back_populates="quotes")
     job: Mapped[Job | None] = relationship(back_populates="quotes")
     line_items: Mapped[list["QuoteLineItem"]] = relationship(
         back_populates="quote", cascade="all, delete-orphan"
     )
+    images: Mapped[list["WorkImage"]] = relationship(back_populates="quote", cascade="all, delete-orphan")
 
 
 class QuoteLineItem(Base):
@@ -80,6 +111,7 @@ class Invoice(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"))
+    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"))
     job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id"))
     invoice_number: Mapped[str] = mapped_column(String(40), unique=True)
     issue_date: Mapped[date] = mapped_column(Date)
@@ -88,11 +120,13 @@ class Invoice(Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     customer: Mapped[Customer] = relationship(back_populates="invoices")
+    department: Mapped[Department | None] = relationship(back_populates="invoices")
     job: Mapped[Job | None] = relationship(back_populates="invoices")
     line_items: Mapped[list["InvoiceLineItem"]] = relationship(
         back_populates="invoice", cascade="all, delete-orphan"
     )
     payments: Mapped[list["Payment"]] = relationship(back_populates="invoice")
+    images: Mapped[list["WorkImage"]] = relationship(back_populates="invoice", cascade="all, delete-orphan")
 
 
 class InvoiceLineItem(Base):
@@ -105,6 +139,20 @@ class InvoiceLineItem(Base):
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
 
     invoice: Mapped[Invoice] = relationship(back_populates="line_items")
+
+
+class WorkImage(Base):
+    __tablename__ = "work_images"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    quote_id: Mapped[int | None] = mapped_column(ForeignKey("quotes.id"))
+    invoice_id: Mapped[int | None] = mapped_column(ForeignKey("invoices.id"))
+    filename: Mapped[str] = mapped_column(String(240))
+    original_filename: Mapped[str | None] = mapped_column(String(240))
+    caption: Mapped[str | None] = mapped_column(String(200))
+
+    quote: Mapped[Quote | None] = relationship(back_populates="images")
+    invoice: Mapped[Invoice | None] = relationship(back_populates="images")
 
 
 class Bill(Base):
@@ -147,6 +195,25 @@ def init_db(database_path: Path) -> None:
     engine = create_engine(f"sqlite:///{database_path}", future=True)
     SessionLocal = sessionmaker(bind=engine, future=True)
     Base.metadata.create_all(engine)
+    ensure_schema_compatibility()
+
+
+def ensure_schema_compatibility() -> None:
+    if engine is None:
+        return
+
+    inspector = inspect(engine)
+    table_names = inspector.get_table_names()
+    with engine.begin() as connection:
+        if "quotes" in table_names:
+            quote_columns = {column["name"] for column in inspector.get_columns("quotes")}
+            if "department_id" not in quote_columns:
+                connection.execute(text("ALTER TABLE quotes ADD COLUMN department_id INTEGER"))
+
+        if "invoices" in table_names:
+            invoice_columns = {column["name"] for column in inspector.get_columns("invoices")}
+            if "department_id" not in invoice_columns:
+                connection.execute(text("ALTER TABLE invoices ADD COLUMN department_id INTEGER"))
 
 
 @contextmanager
@@ -234,3 +301,12 @@ def next_invoice_number(session: Session) -> str:
 def next_quote_number(session: Session) -> str:
     count = session.scalar(select(func.count(Quote.id))) or 0
     return f"Q-{count + 1:04d}"
+
+
+def get_company_settings(session: Session) -> CompanySettings:
+    settings = session.get(CompanySettings, 1)
+    if settings is None:
+        settings = CompanySettings(id=1, company_name="OpenBooks")
+        session.add(settings)
+        session.flush()
+    return settings

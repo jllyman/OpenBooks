@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+    <div><p class="eyebrow">Business setup</p><h2>Company settings</h2></div>
+</section>
+
+<section class="split wide">
+    <article class="panel form-panel">
+        <h3>Company profile</h3>
+        <form method="post" action="{{ url_for('update_company_settings') }}" enctype="multipart/form-data">
+            {% if company.logo_filename %}
+                <img class="settings-logo" src="{{ url_for('static', filename=company.logo_filename) }}" alt="{{ company.company_name }} logo">
+            {% endif %}
+            <label>Company name<input name="company_name" value="{{ company.company_name }}" required></label>
+            <label>Logo<input name="logo" type="file" accept="image/*"></label>
+            <label>Email<input name="email" type="email" value="{{ company.email or '' }}"></label>
+            <label>Phone<input name="phone" value="{{ company.phone or '' }}"></label>
+            <label>Website<input name="website" value="{{ company.website or '' }}"></label>
+            <label>Address line 1<input name="address_line_1" value="{{ company.address_line_1 or '' }}"></label>
+            <label>Address line 2<input name="address_line_2" value="{{ company.address_line_2 or '' }}"></label>
+            <div class="form-grid">
+                <label>City<input name="city" value="{{ company.city or '' }}"></label>
+                <label>State<input name="state" value="{{ company.state or '' }}"></label>
+                <label>ZIP<input name="postal_code" value="{{ company.postal_code or '' }}"></label>
+            </div>
+            <label>Notes<textarea name="notes" rows="4">{{ company.notes or "" }}</textarea></label>
+            <button type="submit">Save company settings</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        <h3>Departments</h3>
+        <form method="post" action="{{ url_for('create_department') }}" class="compact-form">
+            <label>Name<input name="name" required></label>
+            <label>Description<textarea name="description" rows="3"></textarea></label>
+            <button type="submit">Save department</button>
+        </form>
+
+        <table>
+            <tr><th>Name</th><th>Description</th></tr>
+            {% for department in departments %}
+                <tr>
+                    <td>{{ department.name }}</td>
+                    <td>{{ department.description or "-" }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="2">No departments yet.</td></tr>
+            {% endfor %}
+        </table>
+    </article>
+</section>
+{% endblock %}
