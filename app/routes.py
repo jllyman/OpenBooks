@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
@@ -9,6 +10,7 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
 from .database import (
+    Account,
     Bill,
     CompanySettings,
     Customer,
@@ -38,6 +40,48 @@ ALLOWED_IMAGE_EXTENSIONS = {".gif", ".jpeg", ".jpg", ".png", ".webp"}
 
 def parse_date(value: str) -> date | None:
     return date.fromisoformat(value) if value else None
+
+
+def open_invoice_amount(invoice: Invoice) -> Decimal:
+    return max(invoice_total(invoice) - invoice_paid(invoice), Decimal("0.00"))
+
+
+def open_bill_amount(bill: Bill) -> Decimal:
+    return max(money(bill.amount) - bill_paid(bill), Decimal("0.00"))
+
+
+def build_reports_context(session):
+    invoices = session.query(Invoice).order_by(Invoice.issue_date.desc()).all()
+    bills = session.query(Bill).order_by(Bill.due_date.asc()).all()
+    jobs = session.query(Job).order_by(Job.name.asc()).all()
+    accounts = session.query(Account).order_by(Account.account_type.asc(), Account.name.asc()).all()
+
+    revenue = sum((invoice_total(invoice) for invoice in invoices), Decimal("0.00"))
+    expenses = sum((money(bill.amount) for bill in bills), Decimal("0.00"))
+    gross_profit = revenue - expenses
+    ar_open = sum((open_invoice_amount(invoice) for invoice in invoices), Decimal("0.00"))
+    ap_open = sum((open_bill_amount(bill) for bill in bills), Decimal("0.00"))
+    estimated_pipeline = sum(
+        (money(job.estimated_amount) for job in jobs if job.status not in {"Done", "Cancelled"}),
+        Decimal("0.00"),
+    )
+
+    return {
+        "report": {
+            "revenue": revenue,
+            "expenses": expenses,
+            "gross_profit": gross_profit,
+            "ar_open": ar_open,
+            "ap_open": ap_open,
+            "estimated_pipeline": estimated_pipeline,
+        },
+        "invoices": invoices,
+        "bills": bills,
+        "accounts": accounts,
+        "invoice_total": invoice_total,
+        "open_invoice_amount": open_invoice_amount,
+        "open_bill_amount": open_bill_amount,
+    }
 
 
 def save_work_images(files: list[FileStorage]) -> list[WorkImage]:
@@ -162,6 +206,57 @@ def register_routes(app):
             )
         flash("Department created.")
         return redirect(url_for("settings"))
+
+    @app.get("/accounting")
+    def accounting():
+        with get_session() as session:
+            accounts = session.query(Account).order_by(Account.account_type.asc(), Account.name.asc()).all()
+            return render_template("accounting.html", accounts=accounts)
+
+    @app.post("/accounting/accounts")
+    def create_account():
+        with get_session() as session:
+            session.add(
+                Account(
+                    name=request.form["name"].strip(),
+                    account_type=request.form["account_type"],
+                    detail_type=request.form.get("detail_type", "").strip() or None,
+                    opening_balance=money(request.form.get("opening_balance", "0")),
+                    description=request.form.get("description", "").strip() or None,
+                    is_active=bool(request.form.get("is_active")),
+                )
+            )
+        flash("Account created.")
+        return redirect(url_for("accounting"))
+
+    @app.post("/accounting/accounts/<int:account_id>")
+    def update_account(account_id: int):
+        with get_session() as session:
+            account = session.get(Account, account_id)
+            if account is None:
+                flash("Account not found.")
+                return redirect(url_for("accounting"))
+
+            account.name = request.form["name"].strip()
+            account.account_type = request.form["account_type"]
+            account.detail_type = request.form.get("detail_type", "").strip() or None
+            account.opening_balance = money(request.form.get("opening_balance", "0"))
+            account.description = request.form.get("description", "").strip() or None
+            account.is_active = bool(request.form.get("is_active"))
+
+        flash("Account updated.")
+        return redirect(url_for("accounting"))
+
+    @app.get("/reports")
+    def reports():
+        with get_session() as session:
+            return render_template("reports.html", **build_reports_context(session))
+
+    @app.get("/reports/print")
+    def print_reports():
+        with get_session() as session:
+            company = session.get(CompanySettings, 1) or CompanySettings(id=1, company_name="OpenBooks")
+            return render_template("reports_print.html", company=company, **build_reports_context(session))
 
     @app.get("/customers")
     def customers():
@@ -293,6 +388,16 @@ def register_routes(app):
                 quote_total=quote_total,
             )
 
+    @app.get("/quotes/<int:quote_id>/print")
+    def print_quote(quote_id: int):
+        with get_session() as session:
+            quote = session.get(Quote, quote_id)
+            if quote is None:
+                flash("Quote not found.")
+                return redirect(url_for("quotes"))
+            company = session.get(CompanySettings, 1) or CompanySettings(id=1, company_name="OpenBooks")
+            return render_template("quote_print.html", quote=quote, company=company, quote_total=quote_total)
+
     @app.post("/quotes/<int:quote_id>")
     def update_quote(quote_id: int):
         descriptions = request.form.getlist("item_description")
@@ -398,6 +503,22 @@ def register_routes(app):
                 customers=customers,
                 departments=departments,
                 jobs=jobs,
+                invoice_total=invoice_total,
+                invoice_paid=invoice_paid,
+            )
+
+    @app.get("/invoices/<int:invoice_id>/print")
+    def print_invoice(invoice_id: int):
+        with get_session() as session:
+            invoice = session.get(Invoice, invoice_id)
+            if invoice is None:
+                flash("Invoice not found.")
+                return redirect(url_for("invoices"))
+            company = session.get(CompanySettings, 1) or CompanySettings(id=1, company_name="OpenBooks")
+            return render_template(
+                "invoice_print.html",
+                invoice=invoice,
+                company=company,
                 invoice_total=invoice_total,
                 invoice_paid=invoice_paid,
             )

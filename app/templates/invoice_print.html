@@ -1,0 +1,66 @@
+{% extends "print_base.html" %}
+{% block title %}Invoice {{ invoice.invoice_number }}{% endblock %}
+{% block content %}
+<header class="print-header">
+    <div>
+        {% if company.logo_filename %}
+            <img class="print-logo" src="{{ url_for('static', filename=company.logo_filename) }}" alt="{{ company.company_name }} logo">
+        {% endif %}
+        <h1>{{ company.company_name }}</h1>
+        <p>{{ company.address_line_1 or "" }}{% if company.address_line_2 %}<br>{{ company.address_line_2 }}{% endif %}</p>
+        <p>{{ company.city or "" }}{% if company.state %}, {{ company.state }}{% endif %} {{ company.postal_code or "" }}</p>
+        <p>{{ company.phone or "" }}{% if company.email %} · {{ company.email }}{% endif %}</p>
+    </div>
+    <div class="print-meta">
+        <p class="eyebrow">Invoice</p>
+        <h2>{{ invoice.invoice_number }}</h2>
+        <p>Issue: {{ invoice.issue_date }}</p>
+        <p>Due: {{ invoice.due_date }}</p>
+        <p>Status: {{ invoice.status }}</p>
+    </div>
+</header>
+
+<section class="print-addresses">
+    <div>
+        <p class="eyebrow">Bill to</p>
+        <h3>{{ invoice.customer.name }}</h3>
+        <p>{{ invoice.customer.email or "" }}</p>
+        <p>{{ invoice.customer.phone or "" }}</p>
+    </div>
+    <div>
+        <p class="eyebrow">Work</p>
+        <p>Department: {{ invoice.department.name if invoice.department else "-" }}</p>
+        <p>Job: {{ invoice.job.name if invoice.job else "-" }}</p>
+    </div>
+</section>
+
+<table class="print-table">
+    <tr><th>Description</th><th>Qty</th><th>Unit price</th><th>Total</th></tr>
+    {% for item in invoice.line_items %}
+        <tr>
+            <td>{{ item.description }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.unit_price|currency }}</td>
+            <td>{{ (item.quantity * item.unit_price)|currency }}</td>
+        </tr>
+    {% endfor %}
+    <tr><td colspan="3"><strong>Total</strong></td><td><strong>{{ invoice_total(invoice)|currency }}</strong></td></tr>
+    <tr><td colspan="3">Paid</td><td>{{ invoice_paid(invoice)|currency }}</td></tr>
+    <tr><td colspan="3"><strong>Open balance</strong></td><td><strong>{{ (invoice_total(invoice) - invoice_paid(invoice))|currency }}</strong></td></tr>
+</table>
+
+{% if invoice.notes %}
+    <section class="print-section"><h3>Notes</h3><p>{{ invoice.notes }}</p></section>
+{% endif %}
+
+{% if invoice.images %}
+    <section class="print-section">
+        <h3>Work images</h3>
+        <div class="print-image-grid">
+            {% for image in invoice.images %}
+                <img src="{{ url_for('static', filename=image.filename) }}" alt="{{ image.original_filename or 'Work image' }}">
+            {% endfor %}
+        </div>
+    </section>
+{% endif %}
+{% endblock %}

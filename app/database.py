@@ -55,6 +55,18 @@ class CompanySettings(Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
 
+class Account(Base):
+    __tablename__ = "accounts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True)
+    account_type: Mapped[str] = mapped_column(String(40))
+    detail_type: Mapped[str | None] = mapped_column(String(80))
+    opening_balance: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    description: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(default=True)
+
+
 class Job(Base):
     __tablename__ = "jobs"
 
@@ -196,6 +208,7 @@ def init_db(database_path: Path) -> None:
     SessionLocal = sessionmaker(bind=engine, future=True)
     Base.metadata.create_all(engine)
     ensure_schema_compatibility()
+    seed_default_accounts()
 
 
 def ensure_schema_compatibility() -> None:
@@ -214,6 +227,36 @@ def ensure_schema_compatibility() -> None:
             invoice_columns = {column["name"] for column in inspector.get_columns("invoices")}
             if "department_id" not in invoice_columns:
                 connection.execute(text("ALTER TABLE invoices ADD COLUMN department_id INTEGER"))
+
+
+def seed_default_accounts() -> None:
+    if SessionLocal is None:
+        return
+
+    defaults = [
+        ("Checking", "Asset", "Bank", "Primary operating cash account"),
+        ("Accounts Receivable", "Asset", "Accounts Receivable", "Customer invoices not yet paid"),
+        ("Inventory Asset", "Asset", "Inventory", "Material or product value on hand"),
+        ("Accounts Payable", "Liability", "Accounts Payable", "Vendor bills not yet paid"),
+        ("Sales Revenue", "Income", "Service/Product Income", "Revenue from invoices"),
+        ("Job Materials", "Expense", "Cost of Goods Sold", "Materials and shop costs"),
+        ("Rent and Utilities", "Expense", "Operating Expense", "Facilities and utilities"),
+        ("Owner Equity", "Equity", "Owner Equity", "Owner investment and retained value"),
+    ]
+
+    with SessionLocal() as session:
+        existing_names = {name for (name,) in session.query(Account.name).all()}
+        for name, account_type, detail_type, description in defaults:
+            if name not in existing_names:
+                session.add(
+                    Account(
+                        name=name,
+                        account_type=account_type,
+                        detail_type=detail_type,
+                        description=description,
+                    )
+                )
+        session.commit()
 
 
 @contextmanager

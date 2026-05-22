@@ -1,0 +1,64 @@
+{% extends "print_base.html" %}
+{% block title %}Quote {{ quote.quote_number }}{% endblock %}
+{% block content %}
+<header class="print-header">
+    <div>
+        {% if company.logo_filename %}
+            <img class="print-logo" src="{{ url_for('static', filename=company.logo_filename) }}" alt="{{ company.company_name }} logo">
+        {% endif %}
+        <h1>{{ company.company_name }}</h1>
+        <p>{{ company.address_line_1 or "" }}{% if company.address_line_2 %}<br>{{ company.address_line_2 }}{% endif %}</p>
+        <p>{{ company.city or "" }}{% if company.state %}, {{ company.state }}{% endif %} {{ company.postal_code or "" }}</p>
+        <p>{{ company.phone or "" }}{% if company.email %} · {{ company.email }}{% endif %}</p>
+    </div>
+    <div class="print-meta">
+        <p class="eyebrow">Quote</p>
+        <h2>{{ quote.quote_number }}</h2>
+        <p>Issue: {{ quote.issue_date }}</p>
+        <p>Valid until: {{ quote.valid_until or "-" }}</p>
+        <p>Status: {{ quote.status }}</p>
+    </div>
+</header>
+
+<section class="print-addresses">
+    <div>
+        <p class="eyebrow">Prepared for</p>
+        <h3>{{ quote.customer.name }}</h3>
+        <p>{{ quote.customer.email or "" }}</p>
+        <p>{{ quote.customer.phone or "" }}</p>
+    </div>
+    <div>
+        <p class="eyebrow">Work</p>
+        <p>Department: {{ quote.department.name if quote.department else "-" }}</p>
+        <p>Job: {{ quote.job.name if quote.job else "-" }}</p>
+    </div>
+</section>
+
+<table class="print-table">
+    <tr><th>Description</th><th>Qty</th><th>Unit price</th><th>Total</th></tr>
+    {% for item in quote.line_items %}
+        <tr>
+            <td>{{ item.description }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.unit_price|currency }}</td>
+            <td>{{ (item.quantity * item.unit_price)|currency }}</td>
+        </tr>
+    {% endfor %}
+    <tr><td colspan="3"><strong>Quote total</strong></td><td><strong>{{ quote_total(quote)|currency }}</strong></td></tr>
+</table>
+
+{% if quote.notes %}
+    <section class="print-section"><h3>Notes</h3><p>{{ quote.notes }}</p></section>
+{% endif %}
+
+{% if quote.images %}
+    <section class="print-section">
+        <h3>Work images</h3>
+        <div class="print-image-grid">
+            {% for image in quote.images %}
+                <img src="{{ url_for('static', filename=image.filename) }}" alt="{{ image.original_filename or 'Work image' }}">
+            {% endfor %}
+        </div>
+    </section>
+{% endif %}
+{% endblock %}

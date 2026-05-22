@@ -47,9 +47,9 @@
                 <h4>Line items</h4>
                 {% for _ in range(5) %}
                     <div class="line-row">
-                        <input name="item_description" placeholder="Description">
-                        <input name="item_quantity" type="number" step="0.01" value="1.00" placeholder="Qty">
-                        <input name="item_unit_price" type="number" step="0.01" value="0.00" placeholder="Unit price">
+                        <label>Description<input name="item_description"></label>
+                        <label>Qty<input name="item_quantity" type="number" step="0.01" value="1.00"></label>
+                        <label>Unit price<span class="money-field"><span>$</span><input name="item_unit_price" type="number" step="0.01" value="0.00"></span></label>
                     </div>
                 {% endfor %}
             </div>

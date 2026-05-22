@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+    <div><p class="eyebrow">Financial view</p><h2>Reports</h2></div>
+    <a class="text-link" href="{{ url_for('print_reports') }}" target="_blank">Print reports</a>
+</section>
+
+<section class="card-grid">
+    <article class="stat-card"><p>Revenue</p><strong>{{ report.revenue|currency }}</strong></article>
+    <article class="stat-card"><p>Expenses</p><strong>{{ report.expenses|currency }}</strong></article>
+    <article class="stat-card"><p>Gross profit</p><strong>{{ report.gross_profit|currency }}</strong></article>
+    <article class="stat-card"><p>Open AR</p><strong>{{ report.ar_open|currency }}</strong></article>
+    <article class="stat-card"><p>Open AP</p><strong>{{ report.ap_open|currency }}</strong></article>
+    <article class="stat-card"><p>Active pipeline</p><strong>{{ report.estimated_pipeline|currency }}</strong></article>
+</section>
+
+<section class="three-up">
+    <article class="panel">
+        <h3>Profit and loss</h3>
+        <table>
+            <tr><th>Line</th><th>Amount</th></tr>
+            <tr><td>Invoice revenue</td><td>{{ report.revenue|currency }}</td></tr>
+            <tr><td>Bill expenses</td><td>{{ report.expenses|currency }}</td></tr>
+            <tr><td><strong>Gross profit</strong></td><td><strong>{{ report.gross_profit|currency }}</strong></td></tr>
+        </table>
+    </article>
+
+    <article class="panel">
+        <h3>Accounts receivable</h3>
+        <table>
+            <tr><th>Invoice</th><th>Customer</th><th>Open</th></tr>
+            {% for invoice in invoices %}
+                {% set open_amount = open_invoice_amount(invoice) %}
+                {% if open_amount > 0 %}
+                    <tr>
+                        <td><a class="table-link" href="{{ url_for('edit_invoice', invoice_id=invoice.id) }}">{{ invoice.invoice_number }}</a></td>
+                        <td>{{ invoice.customer.name }}</td>
+                        <td>{{ open_amount|currency }}</td>
+                    </tr>
+                {% endif %}
+            {% else %}
+                <tr><td colspan="3">No invoices yet.</td></tr>
+            {% endfor %}
+        </table>
+    </article>
+
+    <article class="panel">
+        <h3>Accounts payable</h3>
+        <table>
+            <tr><th>Vendor</th><th>Due</th><th>Open</th></tr>
+            {% for bill in bills %}
+                {% set open_amount = open_bill_amount(bill) %}
+                {% if open_amount > 0 %}
+                    <tr><td>{{ bill.vendor_name }}</td><td>{{ bill.due_date }}</td><td>{{ open_amount|currency }}</td></tr>
+                {% endif %}
+            {% else %}
+                <tr><td colspan="3">No bills yet.</td></tr>
+            {% endfor %}
+        </table>
+    </article>
+</section>
+
+<section class="panel report-section">
+    <h3>Chart of accounts summary</h3>
+    <table>
+        <tr><th>Account</th><th>Type</th><th>Detail</th><th>Opening balance</th><th>Status</th></tr>
+        {% for account in accounts %}
+            <tr>
+                <td>{{ account.name }}</td>
+                <td>{{ account.account_type }}</td>
+                <td>{{ account.detail_type or "-" }}</td>
+                <td>{{ account.opening_balance|currency }}</td>
+                <td>{{ "Active" if account.is_active else "Inactive" }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="5">No accounts yet.</td></tr>
+        {% endfor %}
+    </table>
+</section>
+{% endblock %}

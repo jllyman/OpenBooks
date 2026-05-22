@@ -5,7 +5,10 @@
         <p class="eyebrow">Sales pipeline</p>
         <h2>Edit quote {{ quote.quote_number }}</h2>
     </div>
-    <a class="text-link" href="{{ url_for('quotes') }}">Back to quotes</a>
+    <div class="page-actions">
+        <a class="text-link" href="{{ url_for('print_quote', quote_id=quote.id) }}" target="_blank">Print quote</a>
+        <a class="text-link" href="{{ url_for('quotes') }}">Back to quotes</a>
+    </div>
 </section>
 
 <section class="split wide">
@@ -49,16 +52,16 @@
                 <h4>Line items</h4>
                 {% for item in quote.line_items %}
                     <div class="line-row">
-                        <input name="item_description" value="{{ item.description }}" placeholder="Description">
-                        <input name="item_quantity" type="number" step="0.01" value="{{ item.quantity }}" placeholder="Qty">
-                        <input name="item_unit_price" type="number" step="0.01" value="{{ item.unit_price }}" placeholder="Unit price">
+                        <label>Description<input name="item_description" value="{{ item.description }}"></label>
+                        <label>Qty<input name="item_quantity" type="number" step="0.01" value="{{ item.quantity }}"></label>
+                        <label>Unit price<span class="money-field"><span>$</span><input name="item_unit_price" type="number" step="0.01" value="{{ item.unit_price }}"></span></label>
                     </div>
                 {% endfor %}
                 {% for _ in range(3) %}
                     <div class="line-row">
-                        <input name="item_description" placeholder="Description">
-                        <input name="item_quantity" type="number" step="0.01" value="1.00" placeholder="Qty">
-                        <input name="item_unit_price" type="number" step="0.01" value="0.00" placeholder="Unit price">
+                        <label>Description<input name="item_description"></label>
+                        <label>Qty<input name="item_quantity" type="number" step="0.01" value="1.00"></label>
+                        <label>Unit price<span class="money-field"><span>$</span><input name="item_unit_price" type="number" step="0.01" value="0.00"></span></label>
                     </div>
                 {% endfor %}
             </div>

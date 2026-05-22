@@ -1,0 +1,72 @@
+{% extends "print_base.html" %}
+{% block title %}Financial Reports{% endblock %}
+{% block content %}
+<header class="print-header">
+    <div>
+        {% if company.logo_filename %}
+            <img class="print-logo" src="{{ url_for('static', filename=company.logo_filename) }}" alt="{{ company.company_name }} logo">
+        {% endif %}
+        <h1>{{ company.company_name }}</h1>
+        <p>Financial reports</p>
+    </div>
+    <div class="print-meta">
+        <p class="eyebrow">Generated</p>
+        <h2>{{ company_settings.company_name }}</h2>
+    </div>
+</header>
+
+<section class="print-summary-grid">
+    <div><p>Revenue</p><strong>{{ report.revenue|currency }}</strong></div>
+    <div><p>Expenses</p><strong>{{ report.expenses|currency }}</strong></div>
+    <div><p>Gross profit</p><strong>{{ report.gross_profit|currency }}</strong></div>
+    <div><p>Open AR</p><strong>{{ report.ar_open|currency }}</strong></div>
+    <div><p>Open AP</p><strong>{{ report.ap_open|currency }}</strong></div>
+    <div><p>Active pipeline</p><strong>{{ report.estimated_pipeline|currency }}</strong></div>
+</section>
+
+<section class="print-section">
+    <h3>Profit and loss</h3>
+    <table class="print-table">
+        <tr><th>Line</th><th>Amount</th></tr>
+        <tr><td>Invoice revenue</td><td>{{ report.revenue|currency }}</td></tr>
+        <tr><td>Bill expenses</td><td>{{ report.expenses|currency }}</td></tr>
+        <tr><td><strong>Gross profit</strong></td><td><strong>{{ report.gross_profit|currency }}</strong></td></tr>
+    </table>
+</section>
+
+<section class="print-section">
+    <h3>Accounts receivable</h3>
+    <table class="print-table">
+        <tr><th>Invoice</th><th>Customer</th><th>Open</th></tr>
+        {% for invoice in invoices %}
+            {% set open_amount = open_invoice_amount(invoice) %}
+            {% if open_amount > 0 %}
+                <tr><td>{{ invoice.invoice_number }}</td><td>{{ invoice.customer.name }}</td><td>{{ open_amount|currency }}</td></tr>
+            {% endif %}
+        {% endfor %}
+    </table>
+</section>
+
+<section class="print-section">
+    <h3>Accounts payable</h3>
+    <table class="print-table">
+        <tr><th>Vendor</th><th>Due</th><th>Open</th></tr>
+        {% for bill in bills %}
+            {% set open_amount = open_bill_amount(bill) %}
+            {% if open_amount > 0 %}
+                <tr><td>{{ bill.vendor_name }}</td><td>{{ bill.due_date }}</td><td>{{ open_amount|currency }}</td></tr>
+            {% endif %}
+        {% endfor %}
+    </table>
+</section>
+
+<section class="print-section">
+    <h3>Chart of accounts</h3>
+    <table class="print-table">
+        <tr><th>Account</th><th>Type</th><th>Detail</th><th>Opening balance</th></tr>
+        {% for account in accounts %}
+            <tr><td>{{ account.name }}</td><td>{{ account.account_type }}</td><td>{{ account.detail_type or "-" }}</td><td>{{ account.opening_balance|currency }}</td></tr>
+        {% endfor %}
+    </table>
+</section>
+{% endblock %}
