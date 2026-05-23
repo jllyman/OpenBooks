@@ -6,3 +6,4 @@ app/static/uploads/
 venv/
 env/
 .env
+.openbooks_secret

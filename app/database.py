@@ -5,12 +5,20 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from sqlalchemy import Date, ForeignKey, Numeric, String, Text, create_engine, func, inspect, select, text
+from sqlalchemy import Column, Date, ForeignKey, Numeric, String, Table, Text, create_engine, func, inspect, select, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 
 
 class Base(DeclarativeBase):
     pass
+
+
+job_contractors = Table(
+    "job_contractors",
+    Base.metadata,
+    Column("job_id", ForeignKey("jobs.id"), primary_key=True),
+    Column("contractor_id", ForeignKey("contractors.id"), primary_key=True),
+)
 
 
 class Customer(Base):
@@ -77,6 +85,16 @@ class CompanySettings(Base):
     app_corner_radius: Mapped[int | None] = mapped_column(default=6)
 
 
+class AppUser(Base):
+    __tablename__ = "app_users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(80), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    display_name: Mapped[str | None] = mapped_column(String(120))
+    is_active: Mapped[bool] = mapped_column(default=True)
+
+
 class Employee(Base):
     __tablename__ = "employees"
 
@@ -110,6 +128,7 @@ class Contractor(Base):
     postal_code: Mapped[str | None] = mapped_column(String(20))
     is_active: Mapped[bool] = mapped_column(default=True)
     notes: Mapped[str | None] = mapped_column(Text)
+    jobs: Mapped[list["Job"]] = relationship(secondary=job_contractors, back_populates="contractors")
 
 
 class TicketType(Base):
@@ -185,6 +204,7 @@ class Job(Base):
     quotes: Mapped[list["Quote"]] = relationship(back_populates="job")
     invoices: Mapped[list["Invoice"]] = relationship(back_populates="job")
     tickets: Mapped[list["Ticket"]] = relationship(back_populates="job")
+    contractors: Mapped[list[Contractor]] = relationship(secondary=job_contractors, back_populates="jobs")
 
 
 class Ticket(Base):

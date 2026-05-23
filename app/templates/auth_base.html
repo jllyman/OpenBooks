@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OpenBooks</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="font-system density-compact width-contained">
+    <main class="auth-shell">
+        <section class="auth-panel panel">
+            <div class="auth-brand">
+                <span class="icon icon-settings"></span>
+                <div>
+                    <p class="eyebrow">OpenBooks</p>
+                    <h1>{% block auth_title %}{% endblock %}</h1>
+                </div>
+            </div>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="flash-stack">
+                        {% for message in messages %}
+                            <div class="flash">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            {% block auth_content %}{% endblock %}
+        </section>
+    </main>
+</body>
+</html>

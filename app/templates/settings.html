@@ -7,31 +7,31 @@
 <section class="settings-layout">
     <aside class="settings-menu">
         <a class="{% if active_section == 'menu' %}active{% endif %}" href="{{ url_for('settings') }}">
-            <strong>Settings menu</strong>
+            <strong><span class="icon icon-settings"></span>Settings menu</strong>
             <span>Choose an area to configure.</span>
         </a>
         <a class="{% if active_section == 'company' %}active{% endif %}" href="{{ url_for('settings', section='company') }}">
-            <strong>Company profile</strong>
+            <strong><span class="icon icon-departments"></span>Company profile</strong>
             <span>Logo, address, phone, and email.</span>
         </a>
         <a class="{% if active_section == 'employees' %}active{% endif %}" href="{{ url_for('settings', section='employees') }}">
-            <strong>Employees</strong>
+            <strong><span class="icon icon-employee"></span>Employees</strong>
             <span>People available for ticket assignment.</span>
         </a>
         <a class="{% if active_section == 'contractors' %}active{% endif %}" href="{{ url_for('settings', section='contractors') }}">
-            <strong>Contractors</strong>
+            <strong><span class="icon icon-contractor"></span>Contractors</strong>
             <span>Outside help available for tickets.</span>
         </a>
         <a class="{% if active_section == 'departments' %}active{% endif %}" href="{{ url_for('settings', section='departments') }}">
-            <strong>Departments</strong>
+            <strong><span class="icon icon-departments"></span>Departments</strong>
             <span>Production groups and job detail fields.</span>
         </a>
         <a class="{% if active_section == 'tickets' %}active{% endif %}" href="{{ url_for('settings', section='tickets') }}">
-            <strong>Ticket types</strong>
+            <strong><span class="icon icon-ticket"></span>Ticket types</strong>
             <span>Prefixes and custom ticket fields.</span>
         </a>
         <a class="{% if active_section == 'appearance' %}active{% endif %}" href="{{ url_for('settings', section='appearance') }}">
-            <strong>Appearance</strong>
+            <strong><span class="icon icon-appearance"></span>Appearance</strong>
             <span>Colors, spacing, typography, and layout.</span>
         </a>
     </aside>
@@ -302,32 +302,32 @@
             <div class="settings-card-grid">
                 <a class="settings-card" href="{{ url_for('settings', section='company') }}">
                     <span class="eyebrow">Business</span>
-                    <strong>Company profile</strong>
+                    <strong><span class="icon icon-departments"></span>Company profile</strong>
                     <p>Manage the company information used across screens and printouts.</p>
                 </a>
                 <a class="settings-card" href="{{ url_for('settings', section='departments') }}">
                     <span class="eyebrow">Production</span>
-                    <strong>Departments</strong>
+                    <strong><span class="icon icon-departments"></span>Departments</strong>
                     <p>Set up departments and the custom fields each job needs.</p>
                 </a>
                 <a class="settings-card" href="{{ url_for('settings', section='employees') }}">
                     <span class="eyebrow">Team</span>
-                    <strong>Employees</strong>
+                    <strong><span class="icon icon-employee"></span>Employees</strong>
                     <p>Maintain the people who can be assigned to tickets.</p>
                 </a>
                 <a class="settings-card" href="{{ url_for('settings', section='contractors') }}">
                     <span class="eyebrow">Outside help</span>
-                    <strong>Contractors</strong>
+                    <strong><span class="icon icon-contractor"></span>Contractors</strong>
                     <p>Maintain outside people and companies for ticket assignment.</p>
                 </a>
                 <a class="settings-card" href="{{ url_for('settings', section='tickets') }}">
                     <span class="eyebrow">Service</span>
-                    <strong>Ticket types</strong>
+                    <strong><span class="icon icon-ticket"></span>Ticket types</strong>
                     <p>Set ticket prefixes and custom fields for automotive and IT work.</p>
                 </a>
                 <a class="settings-card" href="{{ url_for('settings', section='appearance') }}">
                     <span class="eyebrow">Interface</span>
-                    <strong>Appearance</strong>
+                    <strong><span class="icon icon-appearance"></span>Appearance</strong>
                     <p>Customize colors, spacing, type, page width, and navigation layout.</p>
                 </a>
             </div>

@@ -32,46 +32,52 @@
                 </span>
             </a>
             <nav class="nav">
-                <a href="{{ url_for('dashboard') }}">Dashboard</a>
-                <a href="{{ url_for('customers') }}">Customers</a>
+                <a href="{{ url_for('dashboard') }}"><span class="icon icon-dashboard"></span>Dashboard</a>
+                <a href="{{ url_for('customers') }}"><span class="icon icon-customers"></span>Customers</a>
                 <details class="nav-menu">
-                    <summary>Work</summary>
+                    <summary><span class="icon icon-work"></span>Work</summary>
                     <div class="nav-submenu">
-                        <a href="{{ url_for('jobs') }}">Jobs</a>
-                        <a href="{{ url_for('tickets') }}">Tickets</a>
-                        <a href="{{ url_for('settings', section='departments') }}">Departments</a>
+                        <a href="{{ url_for('jobs') }}"><span class="icon icon-jobs"></span>Jobs</a>
+                        <a href="{{ url_for('tickets') }}"><span class="icon icon-ticket"></span>Tickets</a>
+                        <a href="{{ url_for('settings', section='departments') }}"><span class="icon icon-departments"></span>Departments</a>
                     </div>
                 </details>
                 <details class="nav-menu">
-                    <summary>Sales</summary>
+                    <summary><span class="icon icon-sales"></span>Sales</summary>
                     <div class="nav-submenu">
-                        <a href="{{ url_for('quotes') }}">Quotes</a>
-                        <a href="{{ url_for('invoices') }}">Invoices</a>
-                        <a href="{{ url_for('payments') }}">Payments</a>
+                        <a href="{{ url_for('quotes') }}"><span class="icon icon-quotes"></span>Quotes</a>
+                        <a href="{{ url_for('invoices') }}"><span class="icon icon-invoices"></span>Invoices</a>
+                        <a href="{{ url_for('payments') }}"><span class="icon icon-payments"></span>Payments</a>
                     </div>
                 </details>
                 <details class="nav-menu">
-                    <summary>Finance</summary>
+                    <summary><span class="icon icon-finance"></span>Finance</summary>
                     <div class="nav-submenu">
-                        <a href="{{ url_for('finance') }}">Income & Expenses</a>
-                        <a href="{{ url_for('bills') }}">Bills</a>
-                        <a href="{{ url_for('accounting') }}">Accounting</a>
-                        <a href="{{ url_for('reports') }}">Reports</a>
-                        <a href="{{ url_for('tax_report') }}">Tax report</a>
+                        <a href="{{ url_for('finance') }}"><span class="icon icon-money"></span>Income & Expenses</a>
+                        <a href="{{ url_for('bills') }}"><span class="icon icon-receipt"></span>Bills</a>
+                        <a href="{{ url_for('accounting') }}"><span class="icon icon-finance"></span>Accounting</a>
+                        <a href="{{ url_for('reports') }}"><span class="icon icon-reports"></span>Reports</a>
+                        <a href="{{ url_for('tax_report') }}"><span class="icon icon-reports"></span>Tax report</a>
                     </div>
                 </details>
                 <details class="nav-menu">
-                    <summary>Settings</summary>
+                    <summary><span class="icon icon-settings"></span>Settings</summary>
                     <div class="nav-submenu">
-                        <a href="{{ url_for('settings') }}">Settings menu</a>
-                        <a href="{{ url_for('settings', section='company') }}">Company</a>
-                        <a href="{{ url_for('settings', section='employees') }}">Employees</a>
-                        <a href="{{ url_for('settings', section='contractors') }}">Contractors</a>
-                        <a href="{{ url_for('settings', section='tickets') }}">Ticket types</a>
-                        <a href="{{ url_for('settings', section='appearance') }}">Appearance</a>
+                        <a href="{{ url_for('settings') }}"><span class="icon icon-settings"></span>Settings menu</a>
+                        <a href="{{ url_for('settings', section='company') }}"><span class="icon icon-departments"></span>Company</a>
+                        <a href="{{ url_for('settings', section='employees') }}"><span class="icon icon-employee"></span>Employees</a>
+                        <a href="{{ url_for('settings', section='contractors') }}"><span class="icon icon-contractor"></span>Contractors</a>
+                        <a href="{{ url_for('settings', section='tickets') }}"><span class="icon icon-ticket"></span>Ticket types</a>
+                        <a href="{{ url_for('settings', section='appearance') }}"><span class="icon icon-appearance"></span>Appearance</a>
                     </div>
                 </details>
             </nav>
+            {% if current_user %}
+                <form class="logout-form" method="post" action="{{ url_for('logout') }}">
+                    <span>{{ current_user.display_name }}</span>
+                    <button class="small-button" type="submit">Sign out</button>
+                </form>
+            {% endif %}
         </header>
         <main class="content">
             {% with messages = get_flashed_messages() %}

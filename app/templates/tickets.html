@@ -23,7 +23,11 @@
                 {% for ticket_type in ticket_types %}
                     <div class="ticket-type-card" data-ticket-type-id="{{ ticket_type.id }}">
                         <span class="eyebrow">{{ ticket_type.ticket_prefix }}</span>
-                        <strong>{{ ticket_type.name }}</strong>
+                        <strong>
+                            {% set ticket_type_name = ticket_type.name|lower %}
+                            <span class="icon {% if 'auto' in ticket_type_name %}icon-car{% elif 'it' in ticket_type_name %}icon-it{% else %}icon-ticket{% endif %}"></span>
+                            {{ ticket_type.name }}
+                        </strong>
                         <p>{{ ticket_type.description or "Custom service workflow" }}</p>
                     </div>
                 {% endfor %}

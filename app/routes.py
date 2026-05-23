@@ -5,12 +5,14 @@ from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
-from flask import current_app, flash, redirect, render_template, request, url_for
+from flask import current_app, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.datastructures import FileStorage
+from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 from .database import (
     Account,
+    AppUser,
     Bill,
     CashTransaction,
     CompanySettings,
@@ -123,10 +125,22 @@ TAX_CATEGORY_LABELS = dict(TAX_CATEGORIES)
 TICKET_STATUSES = ["Open", "Scheduled", "In Progress", "Waiting", "Resolved", "Closed", "Cancelled"]
 TICKET_PRIORITIES = ["Low", "Normal", "High", "Urgent"]
 FIELD_TYPES = ["text", "number", "date", "checkbox", "long_text"]
+PUBLIC_ENDPOINTS = {"login", "login_post", "setup_admin", "create_admin_user", "static"}
 
 
 def parse_date(value: str) -> date | None:
     return date.fromisoformat(value) if value else None
+
+
+def users_exist() -> bool:
+    with get_session() as db_session:
+        return (db_session.query(AppUser.id).limit(1).first()) is not None
+
+
+def safe_next_url(value: str | None) -> str:
+    if value and value.startswith("/") and not value.startswith("//"):
+        return value
+    return url_for("dashboard")
 
 
 def clean_color(value: str | None, fallback: str) -> str:
@@ -472,7 +486,54 @@ def save_job_detail_values(job: Job, fields: list[JobDetailField]) -> None:
         detail_value.value = value
 
 
+def contractor_ids_from_form() -> list[int]:
+    contractor_ids = []
+    for value in request.form.getlist("contractor_ids"):
+        if value:
+            contractor_ids.append(int(value))
+    return contractor_ids
+
+
+def assign_job_contractors(session, job: Job) -> None:
+    contractor_ids = contractor_ids_from_form()
+    job.contractors = (
+        session.query(Contractor)
+        .filter(Contractor.id.in_(contractor_ids))
+        .order_by(Contractor.name.asc())
+        .all()
+        if contractor_ids
+        else []
+    )
+
+
 def register_routes(app):
+    @app.before_request
+    def require_login():
+        endpoint = request.endpoint or ""
+        if endpoint in PUBLIC_ENDPOINTS or endpoint.startswith("static"):
+            return None
+
+        has_users = users_exist()
+        if not has_users:
+            return redirect(url_for("setup_admin"))
+
+        user_id = session.get("user_id")
+        if not user_id:
+            return redirect(url_for("login", next=request.full_path if request.query_string else request.path))
+
+        with get_session() as db_session:
+            user = db_session.get(AppUser, user_id)
+            if user is None or not user.is_active:
+                session.clear()
+                return redirect(url_for("login"))
+            g.current_user = {
+                "id": user.id,
+                "username": user.username,
+                "display_name": user.display_name or user.username,
+            }
+
+        return None
+
     @app.template_filter("currency")
     def currency_filter(value):
         return f"${float(value or 0):,.2f}"
@@ -489,7 +550,78 @@ def register_routes(app):
                     "logo_filename": logo_filename,
                 },
                 "appearance": appearance_settings(settings),
+                "current_user": getattr(g, "current_user", None),
             }
+
+    @app.get("/setup")
+    def setup_admin():
+        if users_exist():
+            return redirect(url_for("login"))
+        return render_template("setup.html")
+
+    @app.post("/setup")
+    def create_admin_user():
+        if users_exist():
+            return redirect(url_for("login"))
+
+        username = request.form["username"].strip()
+        password = request.form["password"]
+        confirm_password = request.form["confirm_password"]
+        display_name = request.form.get("display_name", "").strip() or None
+
+        if len(username) < 3:
+            flash("Username must be at least 3 characters.")
+            return redirect(url_for("setup_admin"))
+        if len(password) < 10:
+            flash("Password must be at least 10 characters.")
+            return redirect(url_for("setup_admin"))
+        if password != confirm_password:
+            flash("Passwords do not match.")
+            return redirect(url_for("setup_admin"))
+
+        with get_session() as db_session:
+            db_session.add(
+                AppUser(
+                    username=username,
+                    display_name=display_name,
+                    password_hash=generate_password_hash(password),
+                )
+            )
+
+        flash("Admin user created. Sign in to continue.")
+        return redirect(url_for("login"))
+
+    @app.get("/login")
+    def login():
+        if not users_exist():
+            return redirect(url_for("setup_admin"))
+        return render_template("login.html", next_url=safe_next_url(request.args.get("next")))
+
+    @app.post("/login")
+    def login_post():
+        if not users_exist():
+            return redirect(url_for("setup_admin"))
+
+        username = request.form["username"].strip()
+        password = request.form["password"]
+        next_url = safe_next_url(request.form.get("next"))
+
+        with get_session() as db_session:
+            user = db_session.query(AppUser).filter(AppUser.username == username).first()
+            if user is None or not user.is_active or not check_password_hash(user.password_hash, password):
+                flash("Invalid username or password.")
+                return redirect(url_for("login", next=next_url))
+
+            session.clear()
+            session["user_id"] = user.id
+
+        return redirect(next_url)
+
+    @app.post("/logout")
+    def logout():
+        session.clear()
+        flash("Signed out.")
+        return redirect(url_for("login"))
 
     @app.get("/")
     def dashboard():
@@ -936,7 +1068,8 @@ def register_routes(app):
             jobs = session.query(Job).order_by(Job.due_date.asc(), Job.name.asc()).all()
             customers = session.query(Customer).order_by(Customer.name.asc()).all()
             departments = session.query(Department).order_by(Department.name.asc()).all()
-            return render_template("jobs.html", jobs=jobs, customers=customers, departments=departments)
+            contractors = session.query(Contractor).filter(Contractor.is_active.is_(True)).order_by(Contractor.name.asc()).all()
+            return render_template("jobs.html", jobs=jobs, customers=customers, departments=departments, contractors=contractors)
 
     @app.post("/jobs")
     def create_job():
@@ -961,6 +1094,7 @@ def register_routes(app):
                 job.model_filename, job.model_original_filename = model_file
 
             session.add(job)
+            assign_job_contractors(session, job)
         flash("Job created.")
         return redirect(url_for("jobs"))
 
@@ -974,12 +1108,14 @@ def register_routes(app):
 
             customers = session.query(Customer).order_by(Customer.name.asc()).all()
             departments = session.query(Department).order_by(Department.name.asc()).all()
+            contractors = session.query(Contractor).filter(Contractor.is_active.is_(True)).order_by(Contractor.name.asc()).all()
             detail_fields = job.department.job_fields if job.department else []
             return render_template(
                 "job_edit.html",
                 job=job,
                 customers=customers,
                 departments=departments,
+                contractors=contractors,
                 detail_fields=detail_fields,
                 detail_values=field_value_map(job),
             )
@@ -1000,6 +1136,7 @@ def register_routes(app):
             job.due_date = parse_date(request.form.get("due_date", ""))
             job.estimated_amount = money(request.form.get("estimated_amount", "0"))
             job.actual_cost = money(request.form.get("actual_cost", "0"))
+            assign_job_contractors(session, job)
 
             drawing_file = save_job_file(request.files.get("drawing_file"), "drawing")
             model_file = save_job_file(request.files.get("model_file"), "model")

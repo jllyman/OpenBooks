@@ -41,6 +41,13 @@
             <label>Actual cost
                 <span class="money-field"><span>$</span><input name="actual_cost" type="number" step="0.01" value="0.00"></span>
             </label>
+            <label>Contractors
+                <select name="contractor_ids" multiple size="4">
+                    {% for contractor in contractors %}
+                        <option value="{{ contractor.id }}">{{ contractor.name }}{% if contractor.company_name %} - {{ contractor.company_name }}{% elif contractor.specialty %} - {{ contractor.specialty }}{% endif %}</option>
+                    {% endfor %}
+                </select>
+            </label>
             <label>Drawing file<input name="drawing_file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.svg,.ai,.dwg,.dxf"></label>
             <label>Model file<input name="model_file" type="file" accept=".step,.stp,.iges,.igs,.stl,.obj,.3mf,.3dm,.f3d,.fcstd,.sldprt,.sldasm,.skp"></label>
             <label>Description<textarea name="description" rows="4"></textarea></label>
@@ -52,7 +59,7 @@
     <article class="panel">
         <h3>Job pipeline</h3>
         <table>
-            <tr><th>Job</th><th>Customer</th><th>Department</th><th>Status</th><th>Estimate</th><th>Files</th></tr>
+            <tr><th>Job</th><th>Customer</th><th>Department</th><th>Status</th><th>Contractors</th><th>Estimate</th><th>Files</th></tr>
             {% for job in jobs %}
                 <tr>
                     <td>
@@ -68,6 +75,15 @@
                     <td>{{ job.customer.name }}</td>
                     <td>{{ job.department.name if job.department else "-" }}</td>
                     <td>{{ job.status }}</td>
+                    <td>
+                        <div class="field-list compact-field-list">
+                            {% for contractor in job.contractors %}
+                                <span>{{ contractor.name }}</span>
+                            {% else %}
+                                <span class="muted">None</span>
+                            {% endfor %}
+                        </div>
+                    </td>
                     <td>{{ job.estimated_amount|currency }}</td>
                     <td>
                         <div class="job-files">
@@ -90,7 +106,7 @@
                     </td>
                 </tr>
             {% else %}
-                <tr><td colspan="6">No jobs yet.</td></tr>
+                <tr><td colspan="7">No jobs yet.</td></tr>
             {% endfor %}
         </table>
     </article>

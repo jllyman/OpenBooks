@@ -12,50 +12,50 @@
 </section>
 
 <section class="card-grid">
-    <article class="stat-card"><p>Open AR</p><strong>{{ snapshot.ar_open|currency }}</strong></article>
-    <article class="stat-card"><p>Open AP</p><strong>{{ snapshot.ap_open|currency }}</strong></article>
-    <article class="stat-card"><p>Income</p><strong>{{ snapshot.revenue|currency }}</strong></article>
-    <article class="stat-card"><p>Expenses</p><strong>{{ snapshot.expenses|currency }}</strong></article>
-    <article class="stat-card"><p>Active jobs</p><strong>{{ snapshot.active_jobs }}</strong></article>
-    <article class="stat-card"><p>Open tickets</p><strong>{{ snapshot.open_tickets }}</strong></article>
+    <article class="stat-card"><span class="icon icon-invoices"></span><p>Open AR</p><strong>{{ snapshot.ar_open|currency }}</strong></article>
+    <article class="stat-card"><span class="icon icon-receipt"></span><p>Open AP</p><strong>{{ snapshot.ap_open|currency }}</strong></article>
+    <article class="stat-card"><span class="icon icon-money"></span><p>Income</p><strong>{{ snapshot.revenue|currency }}</strong></article>
+    <article class="stat-card"><span class="icon icon-finance"></span><p>Expenses</p><strong>{{ snapshot.expenses|currency }}</strong></article>
+    <article class="stat-card"><span class="icon icon-jobs"></span><p>Active jobs</p><strong>{{ snapshot.active_jobs }}</strong></article>
+    <article class="stat-card"><span class="icon icon-ticket"></span><p>Open tickets</p><strong>{{ snapshot.open_tickets }}</strong></article>
 </section>
 
 <section class="workflow-board">
     <article class="workflow-lane">
         <h3>Sales flow</h3>
         <div class="workflow-row">
-            <a class="workflow-step" href="{{ url_for('customers') }}"><span>1</span><strong>Customers</strong><em>Start or update contact info</em></a>
-            <a class="workflow-step" href="{{ url_for('quotes') }}"><span>2</span><strong>Quotes</strong><em>Price the work</em></a>
-            <a class="workflow-step" href="{{ url_for('invoices') }}"><span>3</span><strong>Invoices</strong><em>Bill completed work</em></a>
-            <a class="workflow-step" href="{{ url_for('payments') }}"><span>4</span><strong>Payments</strong><em>Apply money received</em></a>
+            <a class="workflow-step" href="{{ url_for('customers') }}"><span class="icon icon-customers"></span><strong>Customers</strong><em>Start or update contact info</em></a>
+            <a class="workflow-step" href="{{ url_for('quotes') }}"><span class="icon icon-quotes"></span><strong>Quotes</strong><em>Price the work</em></a>
+            <a class="workflow-step" href="{{ url_for('invoices') }}"><span class="icon icon-invoices"></span><strong>Invoices</strong><em>Bill completed work</em></a>
+            <a class="workflow-step" href="{{ url_for('payments') }}"><span class="icon icon-payments"></span><strong>Payments</strong><em>Apply money received</em></a>
         </div>
     </article>
 
     <article class="workflow-lane">
         <h3>Production flow</h3>
         <div class="workflow-row">
-            <a class="workflow-step" href="{{ url_for('jobs') }}"><span>1</span><strong>Jobs</strong><em>Track status, files, settings</em></a>
-            <a class="workflow-step" href="{{ url_for('tickets') }}"><span>2</span><strong>Tickets</strong><em>Automotive and IT requests</em></a>
-            <a class="workflow-step" href="{{ url_for('settings', section='departments') }}"><span>3</span><strong>Departments</strong><em>Define job fields</em></a>
-            <a class="workflow-step" href="{{ url_for('finance') }}"><span>4</span><strong>Job costs</strong><em>Record materials and expenses</em></a>
+            <a class="workflow-step" href="{{ url_for('jobs') }}"><span class="icon icon-jobs"></span><strong>Jobs</strong><em>Track status, files, settings</em></a>
+            <a class="workflow-step" href="{{ url_for('tickets') }}"><span class="icon icon-ticket"></span><strong>Tickets</strong><em>Automotive and IT requests</em></a>
+            <a class="workflow-step" href="{{ url_for('settings', section='departments') }}"><span class="icon icon-departments"></span><strong>Departments</strong><em>Define job fields</em></a>
+            <a class="workflow-step" href="{{ url_for('finance') }}"><span class="icon icon-money"></span><strong>Job costs</strong><em>Record materials and expenses</em></a>
         </div>
     </article>
 
     <article class="workflow-lane">
         <h3>Vendor and expense flow</h3>
         <div class="workflow-row">
-            <a class="workflow-step" href="{{ url_for('bills') }}"><span>1</span><strong>Bills</strong><em>Track payable invoices</em></a>
-            <a class="workflow-step" href="{{ url_for('payments') }}"><span>2</span><strong>Pay bills</strong><em>Record outgoing payments</em></a>
-            <a class="workflow-step" href="{{ url_for('finance') }}"><span>3</span><strong>Expenses</strong><em>Capture quick receipts</em></a>
+            <a class="workflow-step" href="{{ url_for('bills') }}"><span class="icon icon-receipt"></span><strong>Bills</strong><em>Track payable invoices</em></a>
+            <a class="workflow-step" href="{{ url_for('payments') }}"><span class="icon icon-payments"></span><strong>Pay bills</strong><em>Record outgoing payments</em></a>
+            <a class="workflow-step" href="{{ url_for('finance') }}"><span class="icon icon-finance"></span><strong>Expenses</strong><em>Capture quick receipts</em></a>
         </div>
     </article>
 
     <article class="workflow-lane">
         <h3>Review and tax flow</h3>
         <div class="workflow-row">
-            <a class="workflow-step" href="{{ url_for('accounting') }}"><span>1</span><strong>Accounts</strong><em>Maintain chart of accounts</em></a>
-            <a class="workflow-step" href="{{ url_for('reports') }}"><span>2</span><strong>Reports</strong><em>Review performance</em></a>
-            <a class="workflow-step" href="{{ url_for('tax_report') }}"><span>3</span><strong>Tax report</strong><em>Income and expense summary</em></a>
+            <a class="workflow-step" href="{{ url_for('accounting') }}"><span class="icon icon-finance"></span><strong>Accounts</strong><em>Maintain chart of accounts</em></a>
+            <a class="workflow-step" href="{{ url_for('reports') }}"><span class="icon icon-reports"></span><strong>Reports</strong><em>Review performance</em></a>
+            <a class="workflow-step" href="{{ url_for('tax_report') }}"><span class="icon icon-reports"></span><strong>Tax report</strong><em>Income and expense summary</em></a>
         </div>
     </article>
 </section>
