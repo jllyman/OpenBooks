@@ -14,8 +14,10 @@ from .database import (
     Bill,
     CashTransaction,
     CompanySettings,
+    Contractor,
     Customer,
     Department,
+    Employee,
     Invoice,
     InvoiceLineItem,
     Job,
@@ -24,6 +26,10 @@ from .database import (
     Payment,
     Quote,
     QuoteLineItem,
+    Ticket,
+    TicketDetailField,
+    TicketDetailValue,
+    TicketType,
     WorkImage,
     add_default_job_fields,
     bill_paid,
@@ -35,6 +41,7 @@ from .database import (
     money,
     next_invoice_number,
     next_quote_number,
+    next_ticket_number,
     quote_total,
 )
 
@@ -113,6 +120,9 @@ TAX_CATEGORIES = [
     ("uncategorized", "Uncategorized"),
 ]
 TAX_CATEGORY_LABELS = dict(TAX_CATEGORIES)
+TICKET_STATUSES = ["Open", "Scheduled", "In Progress", "Waiting", "Resolved", "Closed", "Cancelled"]
+TICKET_PRIORITIES = ["Low", "Normal", "High", "Urgent"]
+FIELD_TYPES = ["text", "number", "date", "checkbox", "long_text"]
 
 
 def parse_date(value: str) -> date | None:
@@ -167,6 +177,65 @@ def transaction_total(transactions: list[CashTransaction], transaction_type: str
 def clean_tax_category(value: str | None) -> str:
     value = (value or "").strip()
     return value if value in TAX_CATEGORY_LABELS else "uncategorized"
+
+
+def clean_ticket_choice(value: str | None, choices: list[str], fallback: str) -> str:
+    value = (value or "").strip()
+    return value if value in choices else fallback
+
+
+def optional_int(value: str | None) -> int | None:
+    return int(value) if value else None
+
+
+def apply_ticket_form(session, ticket: Ticket) -> TicketType | None:
+    ticket_type_id = optional_int(request.form.get("ticket_type_id"))
+    ticket_type = session.get(TicketType, ticket_type_id) if ticket_type_id else None
+    ticket.ticket_type_id = ticket_type_id
+    ticket.ticket_type = ticket_type.name if ticket_type else "General"
+    ticket.status = clean_ticket_choice(request.form.get("status"), TICKET_STATUSES, "Open")
+    ticket.priority = clean_ticket_choice(request.form.get("priority"), TICKET_PRIORITIES, "Normal")
+    ticket.subject = request.form["subject"].strip()
+    ticket.customer_id = optional_int(request.form.get("customer_id"))
+    ticket.department_id = optional_int(request.form.get("department_id"))
+    ticket.job_id = optional_int(request.form.get("job_id"))
+    ticket.requested_by = request.form.get("requested_by", "").strip() or None
+    ticket.contact_phone = request.form.get("contact_phone", "").strip() or None
+    ticket.assigned_to = request.form.get("assigned_to", "").strip() or None
+    ticket.opened_date = parse_date(request.form.get("opened_date", "")) or date.today()
+    ticket.due_date = parse_date(request.form.get("due_date", ""))
+    ticket.completed_date = parse_date(request.form.get("completed_date", ""))
+    ticket.description = request.form.get("description", "").strip() or None
+    ticket.resolution = request.form.get("resolution", "").strip() or None
+    ticket.vehicle_year = request.form.get("vehicle_year", "").strip() or None
+    ticket.vehicle_make = request.form.get("vehicle_make", "").strip() or None
+    ticket.vehicle_model = request.form.get("vehicle_model", "").strip() or None
+    ticket.vehicle_vin = request.form.get("vehicle_vin", "").strip() or None
+    ticket.vehicle_plate = request.form.get("vehicle_plate", "").strip() or None
+    ticket.vehicle_mileage = request.form.get("vehicle_mileage", "").strip() or None
+    ticket.it_asset_tag = request.form.get("it_asset_tag", "").strip() or None
+    ticket.it_device_type = request.form.get("it_device_type", "").strip() or None
+    ticket.it_system = request.form.get("it_system", "").strip() or None
+    ticket.it_location = request.form.get("it_location", "").strip() or None
+    return ticket_type
+
+
+def ticket_detail_value_map(ticket: Ticket) -> dict[int, TicketDetailValue]:
+    return {detail_value.field_id: detail_value for detail_value in ticket.detail_values}
+
+
+def save_ticket_detail_values(ticket: Ticket, fields: list[TicketDetailField]) -> None:
+    values_by_field_id = ticket_detail_value_map(ticket)
+    for field in fields:
+        form_key = f"ticket_field_{field.id}"
+        value = "Yes" if field.field_type == "checkbox" and request.form.get(form_key) else request.form.get(form_key, "")
+        value = value.strip() if value else None
+
+        detail_value = values_by_field_id.get(field.id)
+        if detail_value is None:
+            detail_value = TicketDetailValue(field_id=field.id)
+            ticket.detail_values.append(detail_value)
+        detail_value.value = value
 
 
 def tax_year_options() -> list[int]:
@@ -429,12 +498,14 @@ def register_routes(app):
             recent_invoices = session.query(Invoice).order_by(Invoice.issue_date.desc()).limit(5).all()
             recent_bills = session.query(Bill).order_by(Bill.due_date.asc()).limit(5).all()
             jobs = session.query(Job).order_by(Job.due_date.asc()).limit(5).all()
+            tickets = session.query(Ticket).order_by(Ticket.due_date.asc(), Ticket.opened_date.desc()).limit(5).all()
             return render_template(
                 "dashboard.html",
                 snapshot=snapshot,
                 recent_invoices=recent_invoices,
                 recent_bills=recent_bills,
                 jobs=jobs,
+                tickets=tickets,
                 invoice_total=invoice_total,
                 invoice_paid=invoice_paid,
                 bill_paid=bill_paid,
@@ -443,17 +514,24 @@ def register_routes(app):
     @app.get("/settings")
     @app.get("/settings/<section>")
     def settings(section: str = "menu"):
-        valid_sections = {"menu", "company", "departments", "appearance"}
+        valid_sections = {"menu", "company", "employees", "contractors", "departments", "tickets", "appearance"}
         if section not in valid_sections:
             return redirect(url_for("settings"))
 
         with get_session() as session:
             company = session.get(CompanySettings, 1) or CompanySettings(id=1, company_name="OpenBooks")
+            employees = session.query(Employee).order_by(Employee.name.asc()).all()
+            contractors = session.query(Contractor).order_by(Contractor.name.asc()).all()
             departments = session.query(Department).order_by(Department.name.asc()).all()
+            ticket_types = session.query(TicketType).order_by(TicketType.name.asc()).all()
             return render_template(
                 "settings.html",
                 company=company,
+                employees=employees,
+                contractors=contractors,
                 departments=departments,
+                ticket_types=ticket_types,
+                field_types=FIELD_TYPES,
                 active_section=section,
             )
 
@@ -517,6 +595,96 @@ def register_routes(app):
         flash("Appearance settings updated.")
         return redirect(url_for("settings", section="appearance"))
 
+    @app.post("/employees")
+    def create_employee():
+        with get_session() as session:
+            session.add(
+                Employee(
+                    name=request.form["name"].strip(),
+                    role=request.form.get("role", "").strip() or None,
+                    email=request.form.get("email", "").strip() or None,
+                    phone=request.form.get("phone", "").strip() or None,
+                    address_line_1=request.form.get("address_line_1", "").strip() or None,
+                    address_line_2=request.form.get("address_line_2", "").strip() or None,
+                    city=request.form.get("city", "").strip() or None,
+                    state=request.form.get("state", "").strip() or None,
+                    postal_code=request.form.get("postal_code", "").strip() or None,
+                    is_active=bool(request.form.get("is_active")),
+                    notes=request.form.get("notes", "").strip() or None,
+                )
+            )
+        flash("Employee added.")
+        return redirect(url_for("settings", section="employees"))
+
+    @app.post("/employees/<int:employee_id>")
+    def update_employee(employee_id: int):
+        with get_session() as session:
+            employee = session.get(Employee, employee_id)
+            if employee is None:
+                flash("Employee not found.")
+                return redirect(url_for("settings", section="employees"))
+
+            employee.name = request.form["name"].strip()
+            employee.role = request.form.get("role", "").strip() or None
+            employee.email = request.form.get("email", "").strip() or None
+            employee.phone = request.form.get("phone", "").strip() or None
+            employee.address_line_1 = request.form.get("address_line_1", "").strip() or None
+            employee.address_line_2 = request.form.get("address_line_2", "").strip() or None
+            employee.city = request.form.get("city", "").strip() or None
+            employee.state = request.form.get("state", "").strip() or None
+            employee.postal_code = request.form.get("postal_code", "").strip() or None
+            employee.is_active = bool(request.form.get("is_active"))
+            employee.notes = request.form.get("notes", "").strip() or None
+
+        flash("Employee updated.")
+        return redirect(url_for("settings", section="employees"))
+
+    @app.post("/contractors")
+    def create_contractor():
+        with get_session() as session:
+            session.add(
+                Contractor(
+                    name=request.form["name"].strip(),
+                    company_name=request.form.get("company_name", "").strip() or None,
+                    specialty=request.form.get("specialty", "").strip() or None,
+                    email=request.form.get("email", "").strip() or None,
+                    phone=request.form.get("phone", "").strip() or None,
+                    address_line_1=request.form.get("address_line_1", "").strip() or None,
+                    address_line_2=request.form.get("address_line_2", "").strip() or None,
+                    city=request.form.get("city", "").strip() or None,
+                    state=request.form.get("state", "").strip() or None,
+                    postal_code=request.form.get("postal_code", "").strip() or None,
+                    is_active=bool(request.form.get("is_active")),
+                    notes=request.form.get("notes", "").strip() or None,
+                )
+            )
+        flash("Contractor added.")
+        return redirect(url_for("settings", section="contractors"))
+
+    @app.post("/contractors/<int:contractor_id>")
+    def update_contractor(contractor_id: int):
+        with get_session() as session:
+            contractor = session.get(Contractor, contractor_id)
+            if contractor is None:
+                flash("Contractor not found.")
+                return redirect(url_for("settings", section="contractors"))
+
+            contractor.name = request.form["name"].strip()
+            contractor.company_name = request.form.get("company_name", "").strip() or None
+            contractor.specialty = request.form.get("specialty", "").strip() or None
+            contractor.email = request.form.get("email", "").strip() or None
+            contractor.phone = request.form.get("phone", "").strip() or None
+            contractor.address_line_1 = request.form.get("address_line_1", "").strip() or None
+            contractor.address_line_2 = request.form.get("address_line_2", "").strip() or None
+            contractor.city = request.form.get("city", "").strip() or None
+            contractor.state = request.form.get("state", "").strip() or None
+            contractor.postal_code = request.form.get("postal_code", "").strip() or None
+            contractor.is_active = bool(request.form.get("is_active"))
+            contractor.notes = request.form.get("notes", "").strip() or None
+
+        flash("Contractor updated.")
+        return redirect(url_for("settings", section="contractors"))
+
     @app.get("/departments")
     def departments():
         return redirect(url_for("settings", section="departments"))
@@ -557,6 +725,63 @@ def register_routes(app):
 
         flash("Job detail field added.")
         return redirect(url_for("settings", section="departments"))
+
+    @app.post("/ticket-types")
+    def create_ticket_type():
+        with get_session() as session:
+            session.add(
+                TicketType(
+                    name=request.form["name"].strip(),
+                    ticket_prefix=request.form.get("ticket_prefix", "").strip() or "T-",
+                    description=request.form.get("description", "").strip() or None,
+                )
+            )
+        flash("Ticket type created.")
+        return redirect(url_for("settings", section="tickets"))
+
+    @app.post("/ticket-types/<int:ticket_type_id>")
+    def update_ticket_type(ticket_type_id: int):
+        with get_session() as session:
+            ticket_type = session.get(TicketType, ticket_type_id)
+            if ticket_type is None:
+                flash("Ticket type not found.")
+                return redirect(url_for("settings", section="tickets"))
+
+            ticket_type.name = request.form["name"].strip()
+            ticket_type.ticket_prefix = request.form.get("ticket_prefix", "").strip() or "T-"
+            ticket_type.description = request.form.get("description", "").strip() or None
+
+        flash("Ticket type updated.")
+        return redirect(url_for("settings", section="tickets"))
+
+    @app.post("/ticket-types/<int:ticket_type_id>/fields")
+    def create_ticket_detail_field(ticket_type_id: int):
+        with get_session() as session:
+            ticket_type = session.get(TicketType, ticket_type_id)
+            if ticket_type is None:
+                flash("Ticket type not found.")
+                return redirect(url_for("settings", section="tickets"))
+
+            label = request.form["label"].strip()
+            if not label:
+                flash("Field label is required.")
+                return redirect(url_for("settings", section="tickets"))
+
+            field_type = request.form.get("field_type", "text")
+            if field_type not in FIELD_TYPES:
+                field_type = "text"
+
+            next_sort_order = max((field.sort_order for field in ticket_type.fields), default=0) + 1
+            ticket_type.fields.append(
+                TicketDetailField(
+                    label=label,
+                    field_type=field_type,
+                    sort_order=next_sort_order,
+                )
+            )
+
+        flash("Ticket field added.")
+        return redirect(url_for("settings", section="tickets"))
 
     @app.get("/accounting")
     def accounting():
@@ -816,6 +1041,93 @@ def register_routes(app):
             else:
                 flash("Choose a drawing or model file to upload.")
         return redirect(url_for("jobs"))
+
+    @app.get("/tickets")
+    def tickets():
+        with get_session() as session:
+            tickets = session.query(Ticket).order_by(Ticket.due_date.asc(), Ticket.opened_date.desc()).all()
+            ticket_types = session.query(TicketType).order_by(TicketType.name.asc()).all()
+            default_ticket_type = ticket_types[0] if ticket_types else None
+            employees = session.query(Employee).filter(Employee.is_active.is_(True)).order_by(Employee.name.asc()).all()
+            contractors = session.query(Contractor).filter(Contractor.is_active.is_(True)).order_by(Contractor.name.asc()).all()
+            customers = session.query(Customer).order_by(Customer.name.asc()).all()
+            departments = session.query(Department).order_by(Department.name.asc()).all()
+            jobs = session.query(Job).order_by(Job.name.asc()).all()
+            return render_template(
+                "tickets.html",
+                tickets=tickets,
+                ticket_types=ticket_types,
+                default_ticket_type=default_ticket_type,
+                next_ticket_numbers={ticket_type.id: next_ticket_number(session, ticket_type) for ticket_type in ticket_types},
+                employees=employees,
+                contractors=contractors,
+                customers=customers,
+                departments=departments,
+                jobs=jobs,
+                ticket_statuses=TICKET_STATUSES,
+                ticket_priorities=TICKET_PRIORITIES,
+                today=date.today(),
+            )
+
+    @app.post("/tickets")
+    def create_ticket():
+        with get_session() as session:
+            ticket = Ticket(ticket_number=request.form["ticket_number"].strip() or "T-0001", opened_date=date.today(), subject="")
+            ticket_type = apply_ticket_form(session, ticket)
+            if not request.form.get("ticket_number", "").strip():
+                ticket.ticket_number = next_ticket_number(session, ticket_type)
+            if ticket_type:
+                save_ticket_detail_values(ticket, list(ticket_type.fields))
+            session.add(ticket)
+        flash("Ticket created.")
+        return redirect(url_for("tickets"))
+
+    @app.get("/tickets/<int:ticket_id>")
+    def edit_ticket(ticket_id: int):
+        with get_session() as session:
+            ticket = session.get(Ticket, ticket_id)
+            if ticket is None:
+                flash("Ticket not found.")
+                return redirect(url_for("tickets"))
+
+            customers = session.query(Customer).order_by(Customer.name.asc()).all()
+            employees = session.query(Employee).filter(Employee.is_active.is_(True)).order_by(Employee.name.asc()).all()
+            contractors = session.query(Contractor).filter(Contractor.is_active.is_(True)).order_by(Contractor.name.asc()).all()
+            ticket_types = session.query(TicketType).order_by(TicketType.name.asc()).all()
+            departments = session.query(Department).order_by(Department.name.asc()).all()
+            jobs = session.query(Job).order_by(Job.name.asc()).all()
+            detail_fields = ticket.ticket_type_record.fields if ticket.ticket_type_record else []
+            return render_template(
+                "ticket_edit.html",
+                ticket=ticket,
+                ticket_types=ticket_types,
+                employees=employees,
+                contractors=contractors,
+                customers=customers,
+                departments=departments,
+                jobs=jobs,
+                next_ticket_numbers={ticket_type.id: next_ticket_number(session, ticket_type) for ticket_type in ticket_types},
+                ticket_statuses=TICKET_STATUSES,
+                ticket_priorities=TICKET_PRIORITIES,
+                detail_fields=detail_fields,
+                detail_values=ticket_detail_value_map(ticket),
+            )
+
+    @app.post("/tickets/<int:ticket_id>")
+    def update_ticket(ticket_id: int):
+        with get_session() as session:
+            ticket = session.get(Ticket, ticket_id)
+            if ticket is None:
+                flash("Ticket not found.")
+                return redirect(url_for("tickets"))
+
+            ticket.ticket_number = request.form["ticket_number"].strip() or ticket.ticket_number
+            ticket_type = apply_ticket_form(session, ticket)
+            if ticket_type:
+                save_ticket_detail_values(ticket, list(ticket_type.fields))
+
+        flash("Ticket updated.")
+        return redirect(url_for("edit_ticket", ticket_id=ticket_id))
 
     @app.get("/quotes")
     def quotes():

@@ -38,6 +38,7 @@
                     <summary>Work</summary>
                     <div class="nav-submenu">
                         <a href="{{ url_for('jobs') }}">Jobs</a>
+                        <a href="{{ url_for('tickets') }}">Tickets</a>
                         <a href="{{ url_for('settings', section='departments') }}">Departments</a>
                     </div>
                 </details>
@@ -64,6 +65,9 @@
                     <div class="nav-submenu">
                         <a href="{{ url_for('settings') }}">Settings menu</a>
                         <a href="{{ url_for('settings', section='company') }}">Company</a>
+                        <a href="{{ url_for('settings', section='employees') }}">Employees</a>
+                        <a href="{{ url_for('settings', section='contractors') }}">Contractors</a>
+                        <a href="{{ url_for('settings', section='tickets') }}">Ticket types</a>
                         <a href="{{ url_for('settings', section='appearance') }}">Appearance</a>
                     </div>
                 </details>

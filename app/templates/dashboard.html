@@ -17,6 +17,7 @@
     <article class="stat-card"><p>Income</p><strong>{{ snapshot.revenue|currency }}</strong></article>
     <article class="stat-card"><p>Expenses</p><strong>{{ snapshot.expenses|currency }}</strong></article>
     <article class="stat-card"><p>Active jobs</p><strong>{{ snapshot.active_jobs }}</strong></article>
+    <article class="stat-card"><p>Open tickets</p><strong>{{ snapshot.open_tickets }}</strong></article>
 </section>
 
 <section class="workflow-board">
@@ -34,8 +35,9 @@
         <h3>Production flow</h3>
         <div class="workflow-row">
             <a class="workflow-step" href="{{ url_for('jobs') }}"><span>1</span><strong>Jobs</strong><em>Track status, files, settings</em></a>
-            <a class="workflow-step" href="{{ url_for('settings', section='departments') }}"><span>2</span><strong>Departments</strong><em>Define job fields</em></a>
-            <a class="workflow-step" href="{{ url_for('finance') }}"><span>3</span><strong>Job costs</strong><em>Record materials and expenses</em></a>
+            <a class="workflow-step" href="{{ url_for('tickets') }}"><span>2</span><strong>Tickets</strong><em>Automotive and IT requests</em></a>
+            <a class="workflow-step" href="{{ url_for('settings', section='departments') }}"><span>3</span><strong>Departments</strong><em>Define job fields</em></a>
+            <a class="workflow-step" href="{{ url_for('finance') }}"><span>4</span><strong>Job costs</strong><em>Record materials and expenses</em></a>
         </div>
     </article>
 
@@ -91,6 +93,18 @@
                 <tr><td><a class="table-link" href="{{ url_for('edit_job', job_id=job.id) }}">{{ job.name }}</a></td><td>{{ job.status }}</td><td>{{ job.due_date or "-" }}</td></tr>
             {% else %}
                 <tr><td colspan="3">No jobs yet.</td></tr>
+            {% endfor %}
+        </table>
+    </article>
+
+    <article class="panel">
+        <h3>Ticket queue</h3>
+        <table>
+            <tr><th>No.</th><th>Status</th><th>Due</th></tr>
+            {% for ticket in tickets %}
+                <tr><td><a class="table-link" href="{{ url_for('edit_ticket', ticket_id=ticket.id) }}">{{ ticket.ticket_number }}</a></td><td>{{ ticket.status }}</td><td>{{ ticket.due_date or "-" }}</td></tr>
+            {% else %}
+                <tr><td colspan="3">No tickets yet.</td></tr>
             {% endfor %}
         </table>
     </article>

@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+    <div><p class="eyebrow">Service desk</p><h2>Tickets</h2></div>
+    <div class="page-actions">
+        <a class="text-link" href="{{ url_for('settings', section='tickets') }}">Ticket type settings</a>
+    </div>
+</section>
+
+<section class="split wide">
+    <article class="panel form-panel">
+        <h3>Create ticket</h3>
+        <form method="post">
+            <label>Ticket type
+                <select id="ticket-type-selector" name="ticket_type_id">
+                    {% for ticket_type in ticket_types %}
+                        <option value="{{ ticket_type.id }}" data-type-name="{{ ticket_type.name|lower }}" {% if default_ticket_type and default_ticket_type.id == ticket_type.id %}selected{% endif %}>{{ ticket_type.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <div class="ticket-type-preview">
+                {% for ticket_type in ticket_types %}
+                    <div class="ticket-type-card" data-ticket-type-id="{{ ticket_type.id }}">
+                        <span class="eyebrow">{{ ticket_type.ticket_prefix }}</span>
+                        <strong>{{ ticket_type.name }}</strong>
+                        <p>{{ ticket_type.description or "Custom service workflow" }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="form-grid">
+                <label>Ticket number<input id="ticket-number" name="ticket_number" value="{{ next_ticket_numbers.get(default_ticket_type.id) if default_ticket_type else 'T-0001' }}" required></label>
+                <label>Priority
+                    <select name="priority">
+                        {% for priority in ticket_priorities %}
+                            <option {% if priority == "Normal" %}selected{% endif %}>{{ priority }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+            <label>Subject<input name="subject" required></label>
+            <div class="form-grid">
+                <label>Status
+                    <select name="status">
+                        {% for status in ticket_statuses %}<option>{{ status }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label>Opened<input name="opened_date" type="date" value="{{ today }}"></label>
+                <label>Due<input name="due_date" type="date"></label>
+            </div>
+            <div class="form-grid">
+                <label>Customer or owner
+                    <select name="customer_id">
+                        <option value="">-</option>
+                        {% for customer in customers %}
+                            <option value="{{ customer.id }}">{{ customer.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>Department
+                    <select name="department_id">
+                        <option value="">-</option>
+                        {% for department in departments %}
+                            <option value="{{ department.id }}">{{ department.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>Linked job
+                    <select name="job_id">
+                        <option value="">-</option>
+                        {% for job in jobs %}
+                            <option value="{{ job.id }}">{{ job.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+            <div class="form-grid">
+                <label>Requested by<input name="requested_by"></label>
+                <label>Phone<input name="contact_phone"></label>
+                <label>Assigned to
+                    <select name="assigned_to">
+                        <option value="">Unassigned</option>
+                        {% if employees %}
+                            <optgroup label="Employees">
+                                {% for employee in employees %}
+                                    <option value="{{ employee.name }}">{{ employee.name }}{% if employee.role %} - {{ employee.role }}{% endif %}</option>
+                                {% endfor %}
+                            </optgroup>
+                        {% endif %}
+                        {% if contractors %}
+                            <optgroup label="Contractors">
+                                {% for contractor in contractors %}
+                                    <option value="{{ contractor.name }}">{{ contractor.name }}{% if contractor.company_name %} - {{ contractor.company_name }}{% elif contractor.specialty %} - {{ contractor.specialty }}{% endif %}</option>
+                                {% endfor %}
+                            </optgroup>
+                        {% endif %}
+                    </select>
+                </label>
+            </div>
+
+            <fieldset class="typed-ticket-section" data-ticket-kind="automotive">
+                <legend>Vehicle</legend>
+                <div class="ticket-detail-grid">
+                    <label>Year<input name="vehicle_year"></label>
+                    <label>Make<input name="vehicle_make"></label>
+                    <label>Model<input name="vehicle_model"></label>
+                    <label>VIN<input name="vehicle_vin"></label>
+                    <label>Plate<input name="vehicle_plate"></label>
+                    <label>Mileage<input name="vehicle_mileage"></label>
+                </div>
+            </fieldset>
+
+            <fieldset class="typed-ticket-section" data-ticket-kind="it">
+                <legend>IT asset</legend>
+                <div class="ticket-detail-grid">
+                    <label>Asset tag<input name="it_asset_tag"></label>
+                    <label>Device type<input name="it_device_type"></label>
+                    <label>System<input name="it_system"></label>
+                    <label>Location<input name="it_location"></label>
+                </div>
+            </fieldset>
+
+            {% for ticket_type in ticket_types %}
+                <div class="detail-form-section ticket-custom-fields" data-ticket-type-id="{{ ticket_type.id }}">
+                    <h4>{{ ticket_type.name }} fields</h4>
+                    {% for field in ticket_type.fields %}
+                        {% if field.field_type == "long_text" %}
+                            <label>{{ field.label }}<textarea name="ticket_field_{{ field.id }}" rows="3"></textarea></label>
+                        {% elif field.field_type == "checkbox" %}
+                            <label class="check-row"><input name="ticket_field_{{ field.id }}" type="checkbox"> {{ field.label }}</label>
+                        {% elif field.field_type == "date" %}
+                            <label>{{ field.label }}<input name="ticket_field_{{ field.id }}" type="date"></label>
+                        {% elif field.field_type == "number" %}
+                            <label>{{ field.label }}<input name="ticket_field_{{ field.id }}" type="number" step="0.01"></label>
+                        {% else %}
+                            <label>{{ field.label }}<input name="ticket_field_{{ field.id }}"></label>
+                        {% endif %}
+                    {% else %}
+                        <p class="muted">No custom fields for this ticket type.</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            <label>Description<textarea name="description" rows="4"></textarea></label>
+            <button type="submit">Save ticket</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        <h3>Ticket queue</h3>
+        <div class="ticket-type-summary">
+            {% for ticket_type in ticket_types %}
+                {% set type_tickets = tickets|selectattr("ticket_type_id", "equalto", ticket_type.id)|list %}
+                <div>
+                    <span class="eyebrow">{{ ticket_type.name }}</span>
+                    <strong>{{ type_tickets|length }}</strong>
+                </div>
+            {% endfor %}
+        </div>
+        <table>
+            <tr><th>No.</th><th>Type</th><th>Subject</th><th>Status</th><th>Priority</th><th>Due</th></tr>
+            {% for ticket in tickets %}
+                <tr>
+                    <td><a class="table-link" href="{{ url_for('edit_ticket', ticket_id=ticket.id) }}">{{ ticket.ticket_number }}</a></td>
+                    <td>{{ ticket.ticket_type }}</td>
+                    <td>
+                        <strong>{{ ticket.subject }}</strong>
+                        <div class="muted">
+                            {% if ticket.customer %}{{ ticket.customer.name }}{% elif ticket.requested_by %}{{ ticket.requested_by }}{% else %}-{% endif %}
+                        </div>
+                    </td>
+                    <td><span class="status-pill status-{{ ticket.status|lower|replace(' ', '-') }}">{{ ticket.status }}</span></td>
+                    <td>{{ ticket.priority }}</td>
+                    <td>{{ ticket.due_date or "-" }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6">No tickets yet.</td></tr>
+            {% endfor %}
+        </table>
+    </article>
+</section>
+<script>
+    const ticketNumbers = {{ next_ticket_numbers|tojson }};
+    const ticketTypeSelector = document.querySelector("#ticket-type-selector");
+    const ticketNumberInput = document.querySelector("#ticket-number");
+    const customFieldGroups = document.querySelectorAll(".ticket-custom-fields");
+    const standardSections = document.querySelectorAll(".typed-ticket-section");
+    const typeCards = document.querySelectorAll(".ticket-type-card");
+
+    function setSectionEnabled(section, enabled) {
+        section.hidden = !enabled;
+        section.querySelectorAll("input, select, textarea").forEach((control) => {
+            control.disabled = !enabled;
+        });
+    }
+
+    function selectedTypeName() {
+        return ticketTypeSelector.selectedOptions[0]?.dataset.typeName || "";
+    }
+
+    function syncTicketTypeFields() {
+        const selectedTypeId = ticketTypeSelector.value;
+        const typeName = selectedTypeName();
+        if (ticketNumbers[selectedTypeId]) {
+            ticketNumberInput.value = ticketNumbers[selectedTypeId];
+        }
+        customFieldGroups.forEach((group) => {
+            setSectionEnabled(group, group.dataset.ticketTypeId === selectedTypeId);
+        });
+        standardSections.forEach((section) => {
+            const kind = section.dataset.ticketKind;
+            setSectionEnabled(section, (kind === "automotive" && typeName.includes("auto")) || (kind === "it" && typeName.includes("it")));
+        });
+        typeCards.forEach((card) => {
+            card.classList.toggle("active", card.dataset.ticketTypeId === selectedTypeId);
+        });
+    }
+
+    ticketTypeSelector.addEventListener("change", syncTicketTypeFields);
+    syncTicketTypeFields();
+</script>
+{% endblock %}

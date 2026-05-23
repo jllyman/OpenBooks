@@ -12,6 +12,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
     margin: 0;
     font-family: Georgia, "Times New Roman", serif;
@@ -215,7 +216,7 @@ h1, h2, h3, h4, p { margin-top: 0; }
 }
 .dashboard-queues {
     display: grid;
-    grid-template-columns: repeat(3, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 1rem;
 }
 .settings-layout {
@@ -362,6 +363,19 @@ body.nav-sidebar .nav-submenu {
 .edit-row:last-child { border-bottom: 0; padding-bottom: 0; }
 .customer-edit-row { grid-template-columns: 1fr 1fr 0.8fr 1.2fr auto; align-items: end; }
 .account-edit-row { grid-template-columns: 1fr 0.85fr 0.8fr 0.7fr 1.1fr 0.55fr auto; align-items: end; }
+.employee-edit-row { grid-template-columns: repeat(4, minmax(120px, 1fr)) 0.5fr 1.2fr auto; align-items: end; }
+.contractor-edit-row { grid-template-columns: repeat(4, minmax(120px, 1fr)) 0.5fr 1.2fr auto; align-items: end; }
+.ticket-type-edit-row { grid-template-columns: 1fr 0.5fr 1.3fr auto; align-items: end; }
+.settings-inline-section {
+    display: grid;
+    gap: 0.7rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
+}
+.settings-inline-section:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
 .settings-logo {
     width: 160px;
     max-height: 100px;
@@ -587,6 +601,84 @@ th, td { text-align: left; padding: 0.75rem 0; border-bottom: 1px solid var(--li
 .inline-upload .small-button {
     padding: 0.55rem 0.75rem;
 }
+.ticket-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    gap: 0.9rem;
+}
+.ticket-type-preview, .ticket-type-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+}
+.ticket-type-card, .ticket-type-summary div {
+    padding: 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--panel-radius) / 2);
+    background: white;
+}
+.ticket-type-card {
+    display: grid;
+    gap: 0.28rem;
+}
+.ticket-type-card.active {
+    border-color: var(--accent-2);
+    box-shadow: inset 4px 0 0 var(--accent-2);
+}
+.ticket-type-card p {
+    margin: 0;
+    color: var(--muted);
+}
+.ticket-type-summary {
+    margin-bottom: 1rem;
+}
+.ticket-type-summary strong {
+    display: block;
+    font-size: 1.35rem;
+}
+fieldset {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--panel-radius) / 2);
+    background: color-mix(in srgb, var(--paper) 75%, white);
+}
+legend {
+    padding: 0 0.35rem;
+    color: var(--muted);
+    font-weight: 700;
+}
+.status-pill {
+    display: inline-block;
+    padding: 0.22rem 0.48rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent-2) 12%, white);
+    border: 1px solid color-mix(in srgb, var(--accent-2) 35%, var(--line));
+    font-size: 0.88rem;
+}
+.status-urgent, .status-waiting {
+    background: #fff2dd;
+    border-color: #f0c997;
+}
+.ticket-summary {
+    display: grid;
+    gap: 0.8rem;
+    margin: 0;
+}
+.ticket-summary div {
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid var(--line);
+}
+.ticket-summary dt {
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+.ticket-summary dd {
+    margin: 0.18rem 0 0;
+    font-weight: 700;
+}
 @media (max-width: 900px) {
     body.nav-sidebar .shell { display: block; }
     body.nav-sidebar .topbar { height: auto; }
@@ -606,7 +698,7 @@ th, td { text-align: left; padding: 0.75rem 0; border-bottom: 1px solid var(--li
     .dashboard-queues { grid-template-columns: 1fr; }
     .workflow-step::after { display: none; }
     .content { padding: 1rem; }
-    .line-row, .customer-edit-row, .account-edit-row, .form-grid, .inline-upload, .inline-field-form { grid-template-columns: 1fr; }
+    .line-row, .customer-edit-row, .account-edit-row, .employee-edit-row, .contractor-edit-row, .ticket-type-edit-row, .form-grid, .inline-upload, .inline-field-form, .ticket-detail-grid { grid-template-columns: 1fr; }
     .print-header, .print-header.with-drawing, .print-addresses, .print-summary-grid { grid-template-columns: 1fr; }
     .print-meta { text-align: left; }
     .print-page { padding: 1rem; }

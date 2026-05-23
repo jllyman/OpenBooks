@@ -23,6 +23,7 @@ class Customer(Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     jobs: Mapped[list["Job"]] = relationship(back_populates="customer")
+    tickets: Mapped[list["Ticket"]] = relationship(back_populates="customer")
     quotes: Mapped[list["Quote"]] = relationship(back_populates="customer")
     invoices: Mapped[list["Invoice"]] = relationship(back_populates="customer")
 
@@ -35,6 +36,7 @@ class Department(Base):
     description: Mapped[str | None] = mapped_column(Text)
 
     jobs: Mapped[list["Job"]] = relationship(back_populates="department")
+    tickets: Mapped[list["Ticket"]] = relationship(back_populates="department")
     quotes: Mapped[list["Quote"]] = relationship(back_populates="department")
     invoices: Mapped[list["Invoice"]] = relationship(back_populates="department")
     job_fields: Mapped[list["JobDetailField"]] = relationship(
@@ -73,6 +75,57 @@ class CompanySettings(Base):
     app_nav_layout: Mapped[str | None] = mapped_column(String(40), default="top")
     app_content_width: Mapped[str | None] = mapped_column(String(40), default="full")
     app_corner_radius: Mapped[int | None] = mapped_column(default=24)
+
+
+class Employee(Base):
+    __tablename__ = "employees"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True)
+    role: Mapped[str | None] = mapped_column(String(120))
+    email: Mapped[str | None] = mapped_column(String(120))
+    phone: Mapped[str | None] = mapped_column(String(40))
+    address_line_1: Mapped[str | None] = mapped_column(String(160))
+    address_line_2: Mapped[str | None] = mapped_column(String(160))
+    city: Mapped[str | None] = mapped_column(String(80))
+    state: Mapped[str | None] = mapped_column(String(40))
+    postal_code: Mapped[str | None] = mapped_column(String(20))
+    is_active: Mapped[bool] = mapped_column(default=True)
+    notes: Mapped[str | None] = mapped_column(Text)
+
+
+class Contractor(Base):
+    __tablename__ = "contractors"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True)
+    company_name: Mapped[str | None] = mapped_column(String(160))
+    specialty: Mapped[str | None] = mapped_column(String(120))
+    email: Mapped[str | None] = mapped_column(String(120))
+    phone: Mapped[str | None] = mapped_column(String(40))
+    address_line_1: Mapped[str | None] = mapped_column(String(160))
+    address_line_2: Mapped[str | None] = mapped_column(String(160))
+    city: Mapped[str | None] = mapped_column(String(80))
+    state: Mapped[str | None] = mapped_column(String(40))
+    postal_code: Mapped[str | None] = mapped_column(String(20))
+    is_active: Mapped[bool] = mapped_column(default=True)
+    notes: Mapped[str | None] = mapped_column(Text)
+
+
+class TicketType(Base):
+    __tablename__ = "ticket_types"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True)
+    ticket_prefix: Mapped[str] = mapped_column(String(20), default="T-")
+    description: Mapped[str | None] = mapped_column(Text)
+
+    tickets: Mapped[list["Ticket"]] = relationship(back_populates="ticket_type_record")
+    fields: Mapped[list["TicketDetailField"]] = relationship(
+        back_populates="ticket_type",
+        cascade="all, delete-orphan",
+        order_by="TicketDetailField.sort_order",
+    )
 
 
 class Account(Base):
@@ -131,6 +184,77 @@ class Job(Base):
     )
     quotes: Mapped[list["Quote"]] = relationship(back_populates="job")
     invoices: Mapped[list["Invoice"]] = relationship(back_populates="job")
+    tickets: Mapped[list["Ticket"]] = relationship(back_populates="job")
+
+
+class Ticket(Base):
+    __tablename__ = "tickets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ticket_number: Mapped[str] = mapped_column(String(40), unique=True)
+    ticket_type: Mapped[str] = mapped_column(String(40), default="Automotive")
+    status: Mapped[str] = mapped_column(String(40), default="Open")
+    priority: Mapped[str] = mapped_column(String(40), default="Normal")
+    subject: Mapped[str] = mapped_column(String(160))
+    ticket_type_id: Mapped[int | None] = mapped_column(ForeignKey("ticket_types.id"))
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id"))
+    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"))
+    job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id"))
+    requested_by: Mapped[str | None] = mapped_column(String(140))
+    contact_phone: Mapped[str | None] = mapped_column(String(40))
+    assigned_to: Mapped[str | None] = mapped_column(String(120))
+    opened_date: Mapped[date] = mapped_column(Date)
+    due_date: Mapped[date | None] = mapped_column(Date)
+    completed_date: Mapped[date | None] = mapped_column(Date)
+    description: Mapped[str | None] = mapped_column(Text)
+    resolution: Mapped[str | None] = mapped_column(Text)
+    vehicle_year: Mapped[str | None] = mapped_column(String(20))
+    vehicle_make: Mapped[str | None] = mapped_column(String(80))
+    vehicle_model: Mapped[str | None] = mapped_column(String(80))
+    vehicle_vin: Mapped[str | None] = mapped_column(String(40))
+    vehicle_plate: Mapped[str | None] = mapped_column(String(40))
+    vehicle_mileage: Mapped[str | None] = mapped_column(String(40))
+    it_asset_tag: Mapped[str | None] = mapped_column(String(80))
+    it_device_type: Mapped[str | None] = mapped_column(String(80))
+    it_system: Mapped[str | None] = mapped_column(String(120))
+    it_location: Mapped[str | None] = mapped_column(String(120))
+
+    customer: Mapped[Customer | None] = relationship(back_populates="tickets")
+    department: Mapped[Department | None] = relationship(back_populates="tickets")
+    job: Mapped[Job | None] = relationship(back_populates="tickets")
+    ticket_type_record: Mapped[TicketType | None] = relationship(back_populates="tickets")
+    detail_values: Mapped[list["TicketDetailValue"]] = relationship(
+        back_populates="ticket",
+        cascade="all, delete-orphan",
+    )
+
+
+class TicketDetailField(Base):
+    __tablename__ = "ticket_detail_fields"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ticket_type_id: Mapped[int] = mapped_column(ForeignKey("ticket_types.id"))
+    label: Mapped[str] = mapped_column(String(120))
+    field_type: Mapped[str] = mapped_column(String(40), default="text")
+    sort_order: Mapped[int] = mapped_column(default=0)
+
+    ticket_type: Mapped[TicketType] = relationship(back_populates="fields")
+    values: Mapped[list["TicketDetailValue"]] = relationship(
+        back_populates="field",
+        cascade="all, delete-orphan",
+    )
+
+
+class TicketDetailValue(Base):
+    __tablename__ = "ticket_detail_values"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"))
+    field_id: Mapped[int] = mapped_column(ForeignKey("ticket_detail_fields.id"))
+    value: Mapped[str | None] = mapped_column(Text)
+
+    ticket: Mapped[Ticket] = relationship(back_populates="detail_values")
+    field: Mapped[TicketDetailField] = relationship(back_populates="values")
 
 
 class JobDetailField(Base):
@@ -287,6 +411,7 @@ def init_db(database_path: Path) -> None:
     Base.metadata.create_all(engine)
     ensure_schema_compatibility()
     seed_default_accounts()
+    seed_default_ticket_types()
     seed_default_job_fields()
 
 
@@ -355,6 +480,25 @@ def ensure_schema_compatibility() -> None:
             if "tax_category" not in transaction_columns:
                 connection.execute(text("ALTER TABLE cash_transactions ADD COLUMN tax_category VARCHAR(120)"))
 
+        if "tickets" in table_names:
+            ticket_columns = {column["name"] for column in inspector.get_columns("tickets")}
+            if "ticket_type_id" not in ticket_columns:
+                connection.execute(text("ALTER TABLE tickets ADD COLUMN ticket_type_id INTEGER"))
+
+        address_columns = {
+            "address_line_1": "VARCHAR(160)",
+            "address_line_2": "VARCHAR(160)",
+            "city": "VARCHAR(80)",
+            "state": "VARCHAR(40)",
+            "postal_code": "VARCHAR(20)",
+        }
+        for table_name in ["employees", "contractors"]:
+            if table_name in table_names:
+                existing_columns = {column["name"] for column in inspector.get_columns(table_name)}
+                for column_name, column_type in address_columns.items():
+                    if column_name not in existing_columns:
+                        connection.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"))
+
 
 def seed_default_accounts() -> None:
     if SessionLocal is None:
@@ -383,6 +527,31 @@ def seed_default_accounts() -> None:
                         description=description,
                     )
                 )
+        session.commit()
+
+
+def seed_default_ticket_types() -> None:
+    if SessionLocal is None:
+        return
+
+    defaults = [
+        ("Automotive", "AUTO-", "Vehicle service and repair work"),
+        ("IT", "IT-", "Computer, network, and systems support"),
+        ("General", "T-", "General service requests"),
+    ]
+
+    with SessionLocal() as session:
+        existing_names = {name for (name,) in session.query(TicketType.name).all()}
+        for name, prefix, description in defaults:
+            if name not in existing_names:
+                session.add(TicketType(name=name, ticket_prefix=prefix, description=description))
+        session.flush()
+        ticket_types_by_name = {ticket_type.name: ticket_type for ticket_type in session.query(TicketType).all()}
+        for ticket in session.query(Ticket).filter(Ticket.ticket_type_id.is_(None)).all():
+            ticket_type = ticket_types_by_name.get(ticket.ticket_type) or ticket_types_by_name.get("General")
+            if ticket_type:
+                ticket.ticket_type_id = ticket_type.id
+                ticket.ticket_type = ticket_type.name
         session.commit()
 
 
@@ -490,6 +659,7 @@ def dashboard_snapshot(session: Session) -> dict[str, Decimal | int]:
     bills = session.scalars(select(Bill)).all()
     cash_transactions = session.scalars(select(CashTransaction)).all()
     jobs = session.scalars(select(Job)).all()
+    tickets = session.scalars(select(Ticket)).all()
 
     ar_open = Decimal("0.00")
     for invoice in invoices:
@@ -510,6 +680,7 @@ def dashboard_snapshot(session: Session) -> dict[str, Decimal | int]:
         Decimal("0.00"),
     )
     active_jobs = sum(1 for job in jobs if job.status not in {"Done", "Cancelled"})
+    open_tickets = sum(1 for ticket in tickets if ticket.status not in {"Resolved", "Closed", "Cancelled"})
 
     return {
         "ar_open": ar_open,
@@ -517,6 +688,7 @@ def dashboard_snapshot(session: Session) -> dict[str, Decimal | int]:
         "revenue": revenue,
         "expenses": expenses,
         "active_jobs": active_jobs,
+        "open_tickets": open_tickets,
     }
 
 
@@ -528,6 +700,12 @@ def next_invoice_number(session: Session) -> str:
 def next_quote_number(session: Session) -> str:
     count = session.scalar(select(func.count(Quote.id))) or 0
     return f"Q-{count + 1:04d}"
+
+
+def next_ticket_number(session: Session, ticket_type: TicketType | None = None) -> str:
+    prefix = ticket_type.ticket_prefix if ticket_type else "T-"
+    count = session.scalar(select(func.count(Ticket.id)).where(Ticket.ticket_number.like(f"{prefix}%"))) or 0
+    return f"{prefix}{count + 1:04d}"
 
 
 def get_company_settings(session: Session) -> CompanySettings:

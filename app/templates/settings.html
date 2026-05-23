@@ -14,9 +14,21 @@
             <strong>Company profile</strong>
             <span>Logo, address, phone, and email.</span>
         </a>
+        <a class="{% if active_section == 'employees' %}active{% endif %}" href="{{ url_for('settings', section='employees') }}">
+            <strong>Employees</strong>
+            <span>People available for ticket assignment.</span>
+        </a>
+        <a class="{% if active_section == 'contractors' %}active{% endif %}" href="{{ url_for('settings', section='contractors') }}">
+            <strong>Contractors</strong>
+            <span>Outside help available for tickets.</span>
+        </a>
         <a class="{% if active_section == 'departments' %}active{% endif %}" href="{{ url_for('settings', section='departments') }}">
             <strong>Departments</strong>
             <span>Production groups and job detail fields.</span>
+        </a>
+        <a class="{% if active_section == 'tickets' %}active{% endif %}" href="{{ url_for('settings', section='tickets') }}">
+            <strong>Ticket types</strong>
+            <span>Prefixes and custom ticket fields.</span>
         </a>
         <a class="{% if active_section == 'appearance' %}active{% endif %}" href="{{ url_for('settings', section='appearance') }}">
             <strong>Appearance</strong>
@@ -48,6 +60,96 @@
                     <label>Notes<textarea name="notes" rows="4">{{ company.notes or "" }}</textarea></label>
                     <button type="submit">Save company settings</button>
                 </form>
+            </article>
+        {% elif active_section == "employees" %}
+            <article class="panel">
+                <h3>Employees</h3>
+                <form method="post" action="{{ url_for('create_employee') }}" class="compact-form">
+                    <div class="form-grid">
+                        <label>Name<input name="name" required></label>
+                        <label>Role<input name="role"></label>
+                        <label>Phone<input name="phone"></label>
+                    </div>
+                    <label>Email<input name="email" type="email"></label>
+                    <label>Address line 1<input name="address_line_1"></label>
+                    <label>Address line 2<input name="address_line_2"></label>
+                    <div class="form-grid">
+                        <label>City<input name="city"></label>
+                        <label>State<input name="state"></label>
+                        <label>ZIP<input name="postal_code"></label>
+                    </div>
+                    <label class="check-row"><input name="is_active" type="checkbox" checked> Active</label>
+                    <label>Notes<textarea name="notes" rows="3"></textarea></label>
+                    <button type="submit">Save employee</button>
+                </form>
+
+                <div class="edit-list">
+                    {% for employee in employees %}
+                        <form method="post" action="{{ url_for('update_employee', employee_id=employee.id) }}" class="edit-row employee-edit-row">
+                            <label>Name<input name="name" value="{{ employee.name }}" required></label>
+                            <label>Role<input name="role" value="{{ employee.role or '' }}"></label>
+                            <label>Email<input name="email" type="email" value="{{ employee.email or '' }}"></label>
+                            <label>Phone<input name="phone" value="{{ employee.phone or '' }}"></label>
+                            <label>Address 1<input name="address_line_1" value="{{ employee.address_line_1 or '' }}"></label>
+                            <label>Address 2<input name="address_line_2" value="{{ employee.address_line_2 or '' }}"></label>
+                            <label>City<input name="city" value="{{ employee.city or '' }}"></label>
+                            <label>State<input name="state" value="{{ employee.state or '' }}"></label>
+                            <label>ZIP<input name="postal_code" value="{{ employee.postal_code or '' }}"></label>
+                            <label class="check-row"><input name="is_active" type="checkbox" {% if employee.is_active %}checked{% endif %}> Active</label>
+                            <label>Notes<textarea name="notes" rows="2">{{ employee.notes or "" }}</textarea></label>
+                            <button type="submit" class="small-button">Update</button>
+                        </form>
+                    {% else %}
+                        <p>No employees yet.</p>
+                    {% endfor %}
+                </div>
+            </article>
+        {% elif active_section == "contractors" %}
+            <article class="panel">
+                <h3>Contractors</h3>
+                <form method="post" action="{{ url_for('create_contractor') }}" class="compact-form">
+                    <div class="form-grid">
+                        <label>Name<input name="name" required></label>
+                        <label>Company<input name="company_name"></label>
+                        <label>Specialty<input name="specialty"></label>
+                    </div>
+                    <div class="form-grid">
+                        <label>Email<input name="email" type="email"></label>
+                        <label>Phone<input name="phone"></label>
+                    </div>
+                    <label>Address line 1<input name="address_line_1"></label>
+                    <label>Address line 2<input name="address_line_2"></label>
+                    <div class="form-grid">
+                        <label>City<input name="city"></label>
+                        <label>State<input name="state"></label>
+                        <label>ZIP<input name="postal_code"></label>
+                    </div>
+                    <label class="check-row"><input name="is_active" type="checkbox" checked> Active</label>
+                    <label>Notes<textarea name="notes" rows="3"></textarea></label>
+                    <button type="submit">Save contractor</button>
+                </form>
+
+                <div class="edit-list">
+                    {% for contractor in contractors %}
+                        <form method="post" action="{{ url_for('update_contractor', contractor_id=contractor.id) }}" class="edit-row contractor-edit-row">
+                            <label>Name<input name="name" value="{{ contractor.name }}" required></label>
+                            <label>Company<input name="company_name" value="{{ contractor.company_name or '' }}"></label>
+                            <label>Specialty<input name="specialty" value="{{ contractor.specialty or '' }}"></label>
+                            <label>Email<input name="email" type="email" value="{{ contractor.email or '' }}"></label>
+                            <label>Phone<input name="phone" value="{{ contractor.phone or '' }}"></label>
+                            <label>Address 1<input name="address_line_1" value="{{ contractor.address_line_1 or '' }}"></label>
+                            <label>Address 2<input name="address_line_2" value="{{ contractor.address_line_2 or '' }}"></label>
+                            <label>City<input name="city" value="{{ contractor.city or '' }}"></label>
+                            <label>State<input name="state" value="{{ contractor.state or '' }}"></label>
+                            <label>ZIP<input name="postal_code" value="{{ contractor.postal_code or '' }}"></label>
+                            <label class="check-row"><input name="is_active" type="checkbox" {% if contractor.is_active %}checked{% endif %}> Active</label>
+                            <label>Notes<textarea name="notes" rows="2">{{ contractor.notes or "" }}</textarea></label>
+                            <button type="submit" class="small-button">Update</button>
+                        </form>
+                    {% else %}
+                        <p>No contractors yet.</p>
+                    {% endfor %}
+                </div>
             </article>
         {% elif active_section == "departments" %}
             <article class="panel">
@@ -89,6 +191,51 @@
                         <tr><td colspan="3">No departments yet.</td></tr>
                     {% endfor %}
                 </table>
+            </article>
+        {% elif active_section == "tickets" %}
+            <article class="panel">
+                <h3>Ticket types</h3>
+                <form method="post" action="{{ url_for('create_ticket_type') }}" class="compact-form">
+                    <div class="form-grid">
+                        <label>Name<input name="name" required></label>
+                        <label>Ticket Prefix<input name="ticket_prefix" value="T-" required></label>
+                        <label>Description<input name="description"></label>
+                    </div>
+                    <button type="submit">Save ticket type</button>
+                </form>
+
+                <div class="edit-list">
+                    {% for ticket_type in ticket_types %}
+                        <section class="settings-inline-section">
+                            <form method="post" action="{{ url_for('update_ticket_type', ticket_type_id=ticket_type.id) }}" class="edit-row ticket-type-edit-row">
+                                <label>Name<input name="name" value="{{ ticket_type.name }}" required></label>
+                                <label>Ticket Prefix<input name="ticket_prefix" value="{{ ticket_type.ticket_prefix }}" required></label>
+                                <label>Description<input name="description" value="{{ ticket_type.description or '' }}"></label>
+                                <button class="small-button" type="submit">Update</button>
+                            </form>
+                            <div class="field-list">
+                                {% for field in ticket_type.fields %}
+                                    <span>{{ field.label }}</span>
+                                {% else %}
+                                    <span class="muted">No fields yet.</span>
+                                {% endfor %}
+                            </div>
+                            <form class="inline-field-form" method="post" action="{{ url_for('create_ticket_detail_field', ticket_type_id=ticket_type.id) }}">
+                                <input name="label" placeholder="New field" required>
+                                <select name="field_type">
+                                    <option value="text">Text</option>
+                                    <option value="number">Number</option>
+                                    <option value="date">Date</option>
+                                    <option value="checkbox">Checkbox</option>
+                                    <option value="long_text">Long text</option>
+                                </select>
+                                <button class="small-button" type="submit">Add</button>
+                            </form>
+                        </section>
+                    {% else %}
+                        <p>No ticket types yet.</p>
+                    {% endfor %}
+                </div>
             </article>
         {% elif active_section == "appearance" %}
             <article class="panel form-panel">
@@ -162,6 +309,21 @@
                     <span class="eyebrow">Production</span>
                     <strong>Departments</strong>
                     <p>Set up departments and the custom fields each job needs.</p>
+                </a>
+                <a class="settings-card" href="{{ url_for('settings', section='employees') }}">
+                    <span class="eyebrow">Team</span>
+                    <strong>Employees</strong>
+                    <p>Maintain the people who can be assigned to tickets.</p>
+                </a>
+                <a class="settings-card" href="{{ url_for('settings', section='contractors') }}">
+                    <span class="eyebrow">Outside help</span>
+                    <strong>Contractors</strong>
+                    <p>Maintain outside people and companies for ticket assignment.</p>
+                </a>
+                <a class="settings-card" href="{{ url_for('settings', section='tickets') }}">
+                    <span class="eyebrow">Service</span>
+                    <strong>Ticket types</strong>
+                    <p>Set ticket prefixes and custom fields for automotive and IT work.</p>
                 </a>
                 <a class="settings-card" href="{{ url_for('settings', section='appearance') }}">
                     <span class="eyebrow">Interface</span>

@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+    <div><p class="eyebrow">Service desk</p><h2>{{ ticket.ticket_number }} - {{ ticket.subject }}</h2></div>
+    <div class="page-actions">
+        <a class="text-link" href="{{ url_for('tickets') }}">Back to tickets</a>
+        <a class="text-link" href="{{ url_for('settings', section='tickets') }}">Ticket type settings</a>
+    </div>
+</section>
+
+<section class="split wide">
+    <article class="panel form-panel">
+        <h3>Ticket details</h3>
+        <form method="post">
+            <label>Ticket type
+                <select id="ticket-type-selector" name="ticket_type_id">
+                    {% for ticket_type in ticket_types %}
+                        <option value="{{ ticket_type.id }}" data-type-name="{{ ticket_type.name|lower }}" {% if ticket.ticket_type_id == ticket_type.id %}selected{% endif %}>{{ ticket_type.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <div class="ticket-type-preview">
+                {% for ticket_type in ticket_types %}
+                    <div class="ticket-type-card" data-ticket-type-id="{{ ticket_type.id }}">
+                        <span class="eyebrow">{{ ticket_type.ticket_prefix }}</span>
+                        <strong>{{ ticket_type.name }}</strong>
+                        <p>{{ ticket_type.description or "Custom service workflow" }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="form-grid">
+                <label>Ticket number<input id="ticket-number" name="ticket_number" value="{{ ticket.ticket_number }}" required></label>
+                <label>Priority
+                    <select name="priority">
+                        {% for priority in ticket_priorities %}
+                            <option {% if ticket.priority == priority %}selected{% endif %}>{{ priority }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+            <label>Subject<input name="subject" value="{{ ticket.subject }}" required></label>
+            <div class="form-grid">
+                <label>Status
+                    <select name="status">
+                        {% for status in ticket_statuses %}
+                            <option {% if ticket.status == status %}selected{% endif %}>{{ status }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>Opened<input name="opened_date" type="date" value="{{ ticket.opened_date or '' }}"></label>
+                <label>Due<input name="due_date" type="date" value="{{ ticket.due_date or '' }}"></label>
+            </div>
+            <div class="form-grid">
+                <label>Completed<input name="completed_date" type="date" value="{{ ticket.completed_date or '' }}"></label>
+                <label>Requested by<input name="requested_by" value="{{ ticket.requested_by or '' }}"></label>
+                <label>Phone<input name="contact_phone" value="{{ ticket.contact_phone or '' }}"></label>
+            </div>
+            <div class="form-grid">
+                <label>Customer or owner
+                    <select name="customer_id">
+                        <option value="">-</option>
+                        {% for customer in customers %}
+                            <option value="{{ customer.id }}" {% if ticket.customer_id == customer.id %}selected{% endif %}>{{ customer.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>Department
+                    <select name="department_id">
+                        <option value="">-</option>
+                        {% for department in departments %}
+                            <option value="{{ department.id }}" {% if ticket.department_id == department.id %}selected{% endif %}>{{ department.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>Linked job
+                    <select name="job_id">
+                        <option value="">-</option>
+                        {% for job in jobs %}
+                            <option value="{{ job.id }}" {% if ticket.job_id == job.id %}selected{% endif %}>{{ job.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+            <label>Assigned to
+                <select name="assigned_to">
+                    <option value="">Unassigned</option>
+                    {% if employees %}
+                        <optgroup label="Employees">
+                            {% for employee in employees %}
+                                <option value="{{ employee.name }}" {% if ticket.assigned_to == employee.name %}selected{% endif %}>{{ employee.name }}{% if employee.role %} - {{ employee.role }}{% endif %}</option>
+                            {% endfor %}
+                        </optgroup>
+                    {% endif %}
+                    {% if contractors %}
+                        <optgroup label="Contractors">
+                            {% for contractor in contractors %}
+                                <option value="{{ contractor.name }}" {% if ticket.assigned_to == contractor.name %}selected{% endif %}>{{ contractor.name }}{% if contractor.company_name %} - {{ contractor.company_name }}{% elif contractor.specialty %} - {{ contractor.specialty }}{% endif %}</option>
+                            {% endfor %}
+                        </optgroup>
+                    {% endif %}
+                    {% set assignable_names = employees|map(attribute="name")|list + contractors|map(attribute="name")|list %}
+                    {% if ticket.assigned_to and ticket.assigned_to not in assignable_names %}
+                        <option value="{{ ticket.assigned_to }}" selected>{{ ticket.assigned_to }}</option>
+                    {% endif %}
+                </select>
+            </label>
+
+            <fieldset class="typed-ticket-section" data-ticket-kind="automotive">
+                <legend>Vehicle</legend>
+                <div class="ticket-detail-grid">
+                    <label>Year<input name="vehicle_year" value="{{ ticket.vehicle_year or '' }}"></label>
+                    <label>Make<input name="vehicle_make" value="{{ ticket.vehicle_make or '' }}"></label>
+                    <label>Model<input name="vehicle_model" value="{{ ticket.vehicle_model or '' }}"></label>
+                    <label>VIN<input name="vehicle_vin" value="{{ ticket.vehicle_vin or '' }}"></label>
+                    <label>Plate<input name="vehicle_plate" value="{{ ticket.vehicle_plate or '' }}"></label>
+                    <label>Mileage<input name="vehicle_mileage" value="{{ ticket.vehicle_mileage or '' }}"></label>
+                </div>
+            </fieldset>
+
+            <fieldset class="typed-ticket-section" data-ticket-kind="it">
+                <legend>IT asset</legend>
+                <div class="ticket-detail-grid">
+                    <label>Asset tag<input name="it_asset_tag" value="{{ ticket.it_asset_tag or '' }}"></label>
+                    <label>Device type<input name="it_device_type" value="{{ ticket.it_device_type or '' }}"></label>
+                    <label>System<input name="it_system" value="{{ ticket.it_system or '' }}"></label>
+                    <label>Location<input name="it_location" value="{{ ticket.it_location or '' }}"></label>
+                </div>
+            </fieldset>
+            {% for ticket_type in ticket_types %}
+                <div class="detail-form-section ticket-custom-fields" data-ticket-type-id="{{ ticket_type.id }}">
+                    <h4>{{ ticket_type.name }} fields</h4>
+                    {% for field in ticket_type.fields %}
+                        {% set detail_value = detail_values.get(field.id) %}
+                        {% set value = detail_value.value if detail_value else "" %}
+                        {% if field.field_type == "long_text" %}
+                            <label>{{ field.label }}<textarea name="ticket_field_{{ field.id }}" rows="3">{{ value or "" }}</textarea></label>
+                        {% elif field.field_type == "checkbox" %}
+                            <label class="check-row"><input name="ticket_field_{{ field.id }}" type="checkbox" {% if value == "Yes" %}checked{% endif %}> {{ field.label }}</label>
+                        {% elif field.field_type == "date" %}
+                            <label>{{ field.label }}<input name="ticket_field_{{ field.id }}" type="date" value="{{ value or '' }}"></label>
+                        {% elif field.field_type == "number" %}
+                            <label>{{ field.label }}<input name="ticket_field_{{ field.id }}" type="number" step="0.01" value="{{ value or '' }}"></label>
+                        {% else %}
+                            <label>{{ field.label }}<input name="ticket_field_{{ field.id }}" value="{{ value or '' }}"></label>
+                        {% endif %}
+                    {% else %}
+                        <p class="muted">No custom fields for this ticket type.</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            <label>Description<textarea name="description" rows="4">{{ ticket.description or "" }}</textarea></label>
+            <label>Resolution<textarea name="resolution" rows="4">{{ ticket.resolution or "" }}</textarea></label>
+            <button type="submit">Save ticket</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        <h3>Summary</h3>
+        <dl class="ticket-summary">
+            <div><dt>Status</dt><dd>{{ ticket.status }}</dd></div>
+            <div><dt>Priority</dt><dd>{{ ticket.priority }}</dd></div>
+            <div><dt>Customer</dt><dd>{{ ticket.customer.name if ticket.customer else "-" }}</dd></div>
+            <div><dt>Department</dt><dd>{{ ticket.department.name if ticket.department else "-" }}</dd></div>
+            <div><dt>Job</dt><dd>{% if ticket.job %}<a class="table-link" href="{{ url_for('edit_job', job_id=ticket.job.id) }}">{{ ticket.job.name }}</a>{% else %}-{% endif %}</dd></div>
+            <div><dt>Opened</dt><dd>{{ ticket.opened_date }}</dd></div>
+        </dl>
+    </article>
+</section>
+<script>
+    const originalTypeId = "{{ ticket.ticket_type_id or '' }}";
+    const originalNumber = "{{ ticket.ticket_number }}";
+    const ticketNumbers = {{ next_ticket_numbers|tojson }};
+    const ticketTypeSelector = document.querySelector("#ticket-type-selector");
+    const ticketNumberInput = document.querySelector("#ticket-number");
+    const customFieldGroups = document.querySelectorAll(".ticket-custom-fields");
+    const standardSections = document.querySelectorAll(".typed-ticket-section");
+    const typeCards = document.querySelectorAll(".ticket-type-card");
+
+    function setSectionEnabled(section, enabled) {
+        section.hidden = !enabled;
+        section.querySelectorAll("input, select, textarea").forEach((control) => {
+            control.disabled = !enabled;
+        });
+    }
+
+    function selectedTypeName() {
+        return ticketTypeSelector.selectedOptions[0]?.dataset.typeName || "";
+    }
+
+    function syncTicketType() {
+        const selectedTypeId = ticketTypeSelector.value;
+        const typeName = selectedTypeName();
+        ticketNumberInput.value = selectedTypeId === originalTypeId ? originalNumber : (ticketNumbers[selectedTypeId] || ticketNumberInput.value);
+        customFieldGroups.forEach((group) => {
+            setSectionEnabled(group, group.dataset.ticketTypeId === selectedTypeId);
+        });
+        standardSections.forEach((section) => {
+            const kind = section.dataset.ticketKind;
+            setSectionEnabled(section, (kind === "automotive" && typeName.includes("auto")) || (kind === "it" && typeName.includes("it")));
+        });
+        typeCards.forEach((card) => {
+            card.classList.toggle("active", card.dataset.ticketTypeId === selectedTypeId);
+        });
+    }
+
+    ticketTypeSelector.addEventListener("change", syncTicketType);
+    syncTicketType();
+</script>
+{% endblock %}
