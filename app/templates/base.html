@@ -113,6 +113,95 @@
                 });
             });
         });
+
+        function normalizeTableValue(value) {
+            return value.replace(/\s+/g, " ").trim();
+        }
+
+        function sortableValue(value) {
+            const cleaned = normalizeTableValue(value);
+            const numberValue = Number(cleaned.replace(/[$,%\s,]/g, ""));
+            if (cleaned && !Number.isNaN(numberValue)) {
+                return { type: "number", value: numberValue };
+            }
+
+            const dateValue = Date.parse(cleaned);
+            if (cleaned && !Number.isNaN(dateValue) && /\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{2,4}/.test(cleaned)) {
+                return { type: "number", value: dateValue };
+            }
+
+            return { type: "text", value: cleaned.toLowerCase() };
+        }
+
+        function enhanceDataTables() {
+            document.querySelectorAll(".content table:not(.print-table):not([data-no-enhance])").forEach((table, tableIndex) => {
+                const rows = Array.from(table.rows);
+                if (rows.length < 2) {
+                    return;
+                }
+
+                const headerRow = rows[0];
+                const headers = Array.from(headerRow.cells);
+                const isDataHeader = headers.length > 1 && headers.every((cell) => cell.tagName === "TH");
+                if (!isDataHeader) {
+                    return;
+                }
+
+                table.classList.add("data-table");
+
+                const controls = document.createElement("div");
+                controls.className = "table-controls";
+                const search = document.createElement("input");
+                search.type = "search";
+                search.className = "table-search";
+                search.placeholder = "Search table";
+                search.setAttribute("aria-label", "Search table");
+                controls.append(search);
+                table.before(controls);
+
+                const dataRows = Array.from(table.rows).slice(1);
+                search.addEventListener("input", () => {
+                    const query = search.value.trim().toLowerCase();
+                    dataRows.forEach((row) => {
+                        row.hidden = query && !row.textContent.toLowerCase().includes(query);
+                    });
+                });
+
+                headers.forEach((header, columnIndex) => {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = "table-sort";
+                    button.textContent = normalizeTableValue(header.textContent);
+                    button.setAttribute("aria-label", `Sort by ${button.textContent}`);
+                    header.textContent = "";
+                    header.append(button);
+
+                    button.addEventListener("click", () => {
+                        const direction = table.dataset.sortColumn === String(columnIndex) && table.dataset.sortDirection === "asc" ? "desc" : "asc";
+                        table.dataset.sortColumn = String(columnIndex);
+                        table.dataset.sortDirection = direction;
+
+                        headers.forEach((otherHeader) => {
+                            otherHeader.classList.remove("sort-asc", "sort-desc");
+                        });
+                        header.classList.add(direction === "asc" ? "sort-asc" : "sort-desc");
+
+                        const sortedRows = dataRows.slice().sort((left, right) => {
+                            const leftCell = left.cells[columnIndex];
+                            const rightCell = right.cells[columnIndex];
+                            const leftValue = sortableValue(leftCell ? leftCell.textContent : "");
+                            const rightValue = sortableValue(rightCell ? rightCell.textContent : "");
+                            const comparison = leftValue.value > rightValue.value ? 1 : leftValue.value < rightValue.value ? -1 : 0;
+                            return direction === "asc" ? comparison : -comparison;
+                        });
+
+                        sortedRows.forEach((row) => table.tBodies[0].append(row));
+                    });
+                });
+            });
+        }
+
+        enhanceDataTables();
     </script>
 </body>
 </html>

@@ -72,19 +72,19 @@ ALLOWED_JOB_FILE_EXTENSIONS = {
     ".webp",
 }
 DEFAULT_APPEARANCE = {
-    "theme_background": "#f3efe6",
-    "theme_paper": "#fcfaf5",
-    "theme_ink": "#1f1d1a",
-    "theme_muted": "#6c6258",
-    "theme_line": "#d8cebe",
-    "theme_accent": "#9d4edd",
-    "theme_accent_2": "#365c4d",
-    "theme_warn": "#c56a2d",
-    "app_font": "serif",
-    "app_density": "comfortable",
+    "theme_background": "#f7f8fa",
+    "theme_paper": "#ffffff",
+    "theme_ink": "#1f2933",
+    "theme_muted": "#64748b",
+    "theme_line": "#d9e0e8",
+    "theme_accent": "#2563eb",
+    "theme_accent_2": "#0f766e",
+    "theme_warn": "#b45309",
+    "app_font": "system",
+    "app_density": "compact",
     "app_nav_layout": "top",
     "app_content_width": "full",
-    "app_corner_radius": 24,
+    "app_corner_radius": 6,
 }
 FONT_OPTIONS = {"serif", "sans", "system"}
 DENSITY_OPTIONS = {"comfortable", "compact", "spacious"}
